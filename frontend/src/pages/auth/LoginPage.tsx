@@ -1,0 +1,115 @@
+import type { FormEvent } from "react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+
+const LoginPage = () => {
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+
+    const handleSubmit = (e: FormEvent) => {
+        e.preventDefault();
+        // Aquí luego llamaremos a la API de login
+        console.log({ email, password });
+    };
+
+    return (
+        <div className="min-h-screen bg-[#0f172a] text-gray-100 flex items-center justify-center">
+            <div className="w-full max-w-md px-6 md:px-8">
+                {/* Logo + textos */}
+                <div className="flex flex-col items-center text-center mb-8">
+                    <div className="bg-[#3b82f6] p-4 rounded-xl inline-flex items-center justify-center mb-8">
+                        {/* Icono simple con un cuadrado y una “pestaña” */}
+                        <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
+                            <span className="text-white text-2xl font-bold">✎</span>
+                        </div>
+                    </div>
+
+                    <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-2">
+                        Bienvenido de vuelta
+                    </h1>
+                    <p className="text-gray-400">
+                        Inicia sesión para acceder a tu cuenta.
+                    </p>
+                </div>
+
+                {/* Formulario */}
+                <form className="space-y-6" onSubmit={handleSubmit}>
+                    {/* Email */}
+                    <div>
+                        <label
+                            htmlFor="email"
+                            className="block text-sm font-medium text-gray-300"
+                        >
+                            Correo Electrónico
+                        </label>
+                        <div className="mt-1">
+                            <input
+                                id="email"
+                                type="email"
+                                autoComplete="email"
+                                required
+                                className="block w-full px-4 py-3 rounded-md bg-[#020617] border border-[#1f2937] text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6]"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="tu@correo.com"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Password */}
+                    <div>
+                        <div className="flex items-center justify-between">
+                            <label
+                                htmlFor="password"
+                                className="block text-sm font-medium text-gray-300"
+                            >
+                                Contraseña
+                            </label>
+                            <button
+                                type="button"
+                                className="text-sm text-[#3b82f6] hover:underline"
+                            >
+                                ¿Olvidaste tu contraseña?
+                            </button>
+                        </div>
+                        <div className="mt-1">
+                            <input
+                                id="password"
+                                type="password"
+                                autoComplete="current-password"
+                                required
+                                className="block w-full px-4 py-3 rounded-md bg-[#020617] border border-[#1f2937] text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6]"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="••••••••"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Botón */}
+                    <div>
+                        <button
+                            type="submit"
+                            className="w-full flex justify-center py-3 px-4 rounded-md text-base font-medium text-white bg-[#3b82f6] hover:bg-[#2563eb] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3b82f6] focus:ring-offset-[#0f172a] transition-colors duration-150"
+                        >
+                            Iniciar Sesión
+                        </button>
+                    </div>
+                </form>
+
+                {/* Footer */}
+                <p className="mt-8 text-center text-sm text-gray-400">
+                    ¿No tienes una cuenta?{" "}
+                    <Link
+                        to="/register"
+                        className="font-medium text-[#3b82f6] hover:underline"
+                    >
+                        Regístrate
+                    </Link>
+                </p>
+            </div>
+        </div>
+    );
+};
+
+export default LoginPage;
