@@ -5,7 +5,10 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
+import com.legalyze.demo.dto.TemplateDetailDto;
 import com.legalyze.demo.dto.TemplateListItemDto;
+import com.legalyze.demo.dto.TemplateSchema;
+import com.legalyze.demo.model.ContractTemplate;
 import com.legalyze.demo.repository.ContractTemplateRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -29,5 +32,26 @@ public class TemplateService {
                     return dto;
                 })
                 .collect(Collectors.toList());
+    }
+
+    public TemplateDetailDto getByCode(String code) {
+        ContractTemplate t = contractTemplateRepository.findByCode(code)
+                .orElseThrow(() -> new IllegalArgumentException("Template not found: " + code));
+
+        TemplateDetailDto dto = new TemplateDetailDto();
+        dto.setCode(t.getCode());
+        dto.setName(t.getName());
+        dto.setDescription(t.getDescription());
+        dto.setLanguage(t.getLanguage());
+
+        try {
+            // schemaJson: {"fields":[{...}]}
+            TemplateSchema schema = objectMapper.readValue(t.getSchemaJson(), TemplateSchema.class);
+            dto.setFields(schema.getFields());
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid schemaJson for template " + code, e);
+        }
+
+        return dto;
     }
 }
