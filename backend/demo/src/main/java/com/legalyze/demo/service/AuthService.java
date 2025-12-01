@@ -11,6 +11,7 @@ import com.legalyze.demo.dto.UserDto;
 import com.legalyze.demo.model.User;
 import com.legalyze.demo.model.UserRole;
 import com.legalyze.demo.repository.UserRepository;
+import com.legalyze.demo.security.JwtService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -21,6 +22,8 @@ public class AuthService {
 
     // Password encoder simplify the process of encoding and matching passwords
     private final PasswordEncoder passwordEncoder;
+
+    private final JwtService jwtService;
 
     public RegisterResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -52,8 +55,7 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid credentials");
         }
 
-        // Token temporal (luego se implementara JWT)
-        String token = "dummy-jwt-" + user.getId();
+        String token = jwtService.generateToken(user);
 
         UserDto userDto = new UserDto();
         userDto.setId(user.getId());
