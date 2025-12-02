@@ -8,7 +8,7 @@ const navItemActive = "bg-[#1f2937] text-white";
 
 const Sidebar = () => {
     return (
-        <aside className="hidden lg:flex h-screen w-64 shrink-0 flex-col bg-[#020617] border-r border-slate-800">
+        <aside className="hidden lg:flex h-auto w-64 shrink-0 flex-col bg-[#020617] border-r border-slate-800">
             {/* Logo */}
             <div className="p-6 border-b border-slate-800">
                 <div className="flex items-center gap-3">
