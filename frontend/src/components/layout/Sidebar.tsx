@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 const navItemBase =
     "flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors";
@@ -7,6 +8,9 @@ const navItemInactive =
 const navItemActive = "bg-[#1f2937] text-white";
 
 const Sidebar = () => {
+
+    const { logout } = useAuth();
+
     return (
         <aside className="hidden lg:flex h-auto w-64 shrink-0 flex-col bg-[#020617] border-r border-slate-800">
             {/* Logo */}
@@ -81,6 +85,7 @@ const Sidebar = () => {
             <div className="p-4 mt-auto border-t border-slate-800">
                 <button
                     type="button"
+                    onClick={logout}
                     className="flex items-center gap-3 px-4 py-2 text-sm text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 rounded-lg w-full text-left transition-colors"
                 >
                     <span>↩</span>

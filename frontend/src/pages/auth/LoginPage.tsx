@@ -1,15 +1,31 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { api } from "../../lib/api";
+import { useAuth } from "../../context/AuthContext";
 
 const LoginPage = () => {
+    const { login } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [error, setError] = useState<string | null>(null);
 
-    const handleSubmit = (e: FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        // Aquí luego llamaremos a la API de login
-        console.log({ email, password });
+        setError(null);
+
+        try {
+            const res = await api.post("/api/auth/login", { email, password });
+
+            const token: string = res.data.token;
+            login(token);
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError("Credenciales inválidas o error del servidor");
+            }
+        }
     };
 
     return (
@@ -31,6 +47,13 @@ const LoginPage = () => {
                         Inicia sesión para acceder a tu cuenta.
                     </p>
                 </div>
+
+                {/* Mensaje de error */}
+                {error && (
+                    <div className="mb-4 p-3 rounded bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                        {error}
+                    </div>
+                )}
 
                 {/* Formulario */}
                 <form className="space-y-6" onSubmit={handleSubmit}>
@@ -90,7 +113,7 @@ const LoginPage = () => {
                     <div>
                         <button
                             type="submit"
-                            className="w-full flex justify-center py-3 px-4 rounded-md text-base font-medium text-white bg-[#3b82f6] hover:bg-[#2563eb] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3b82f6] focus:ring-offset-[#0f172a] transition-colors duration-150"
+                            className="w-full flex justify-center py-3 px-4 rounded-md text-base font-medium text-white bg-[#3b82f6] hover:bg-[#2563eb] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3b82f6] focus:ring-offset-[#0f172a] transition-colors duration-150 cursor-pointer"
                         >
                             Iniciar Sesión
                         </button>
