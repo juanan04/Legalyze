@@ -9,5 +9,6 @@ public class RegisterResponse {
     private Long id;
     private String name;
     private String email;
+    private String token;
     private LocalDateTime createdAt;
 }

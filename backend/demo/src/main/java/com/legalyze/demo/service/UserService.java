@@ -29,14 +29,18 @@ public class UserService {
         dto.setId(u.getId());
         dto.setName(u.getName());
         dto.setEmail(u.getEmail());
+        dto.setProfileImage(u.getProfileImage());
         dto.setCreatedAt(u.getCreatedAt());
         return dto;
     }
 
-    public UserProfileDto updateProfile(String name, String email) {
+    public UserProfileDto updateProfile(String name, String email, String profileImage) {
         User u = getCurrentUser();
         u.setName(name);
         u.setEmail(email);
+        if (profileImage != null) {
+            u.setProfileImage(profileImage);
+        }
         userRepository.save(u);
         return getProfile();
     }

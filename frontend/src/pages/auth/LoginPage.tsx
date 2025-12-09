@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 import { api } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 
+import logo from "../../assets/logo.png";
+
 const LoginPage = () => {
     const { login } = useAuth();
     const [email, setEmail] = useState("");
@@ -18,7 +20,8 @@ const LoginPage = () => {
             const res = await api.post("/api/auth/login", { email, password });
 
             const token: string = res.data.token;
-            login(token);
+            const user = res.data.user;
+            login(token, user);
         } catch (err) {
             if (err instanceof Error) {
                 setError(err.message);
@@ -33,12 +36,7 @@ const LoginPage = () => {
             <div className="w-full max-w-md px-6 md:px-8">
                 {/* Logo + textos */}
                 <div className="flex flex-col items-center text-center mb-8">
-                    <div className="bg-[#3b82f6] p-4 rounded-xl inline-flex items-center justify-center mb-8">
-                        {/* Icono simple con un cuadrado y una “pestaña” */}
-                        <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
-                            <span className="text-white text-2xl font-bold">✎</span>
-                        </div>
-                    </div>
+                    <img src={logo} alt="Legalyze Logo" className="w-20 h-20 rounded-xl mb-8" />
 
                     <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-2">
                         Bienvenido de vuelta

@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import logo from "../assets/logo.png";
 
 const LandingPage = () => {
     return (
@@ -6,11 +7,7 @@ const LandingPage = () => {
             <main className="w-full max-w-xl text-center">
                 {/* Icono superior */}
                 <div className="flex justify-center mb-8">
-                    <div className="bg-[#2563EB] p-4 rounded-xl inline-flex items-center justify-center">
-                        <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
-                            <span className="text-white text-2xl font-bold">✎</span>
-                        </div>
-                    </div>
+                    <img src={logo} alt="Legalyze Logo" className="w-24 h-24 rounded-2xl shadow-lg shadow-blue-500/20" />
                 </div>
 
                 {/* Título + subtítulo */}

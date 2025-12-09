@@ -30,7 +30,8 @@ public class UserController {
 
     @PutMapping("/me")
     public ResponseEntity<UserProfileDto> updateProfile(@RequestBody UpdateProfileRequest request) {
-        return ResponseEntity.ok(userService.updateProfile(request.getName(), request.getEmail()));
+        return ResponseEntity
+                .ok(userService.updateProfile(request.getName(), request.getEmail(), request.getProfileImage()));
     }
 
     @PutMapping("/me/password")

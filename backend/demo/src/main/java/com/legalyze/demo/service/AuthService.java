@@ -39,10 +39,13 @@ public class AuthService {
 
         user = userRepository.save(user);
 
+        String token = jwtService.generateToken(user);
+
         RegisterResponse resp = new RegisterResponse();
         resp.setId(user.getId());
         resp.setName(user.getName());
         resp.setEmail(user.getEmail());
+        resp.setToken(token);
         resp.setCreatedAt(user.getCreatedAt());
         return resp;
     }
@@ -61,6 +64,7 @@ public class AuthService {
         userDto.setId(user.getId());
         userDto.setName(user.getName());
         userDto.setEmail(user.getEmail());
+        userDto.setProfileImage(user.getProfileImage());
 
         LoginResponse resp = new LoginResponse();
         resp.setToken(token);
