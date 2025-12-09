@@ -5,12 +5,14 @@ import { api } from "../../lib/api";
 type ContractType = "GENERATED" | "ANALYZED";
 
 interface ClauseDto {
-    type: string;
-    text: string;
+    title: string;
+    description: string;
+    clauseText?: string;
+    riskLevel?: string;
 }
 
 interface RiskDto {
-    riskType: string;
+    title: string;
     description: string;
     severity: string;
 }
@@ -310,9 +312,30 @@ const HistoryPage = () => {
                                                         <ul className="space-y-2">
                                                             {(detailData as AnalyzedContractDetail).risks.map((risk, idx) => (
                                                                 <li key={idx} className="bg-red-900/20 border border-red-900/50 rounded-lg p-3">
-                                                                    <p className="text-red-200 font-medium text-sm">{risk.riskType}</p>
+                                                                    <p className="text-red-200 font-medium text-sm">{risk.title}</p>
                                                                     <p className="text-red-300/80 text-xs mt-1">{risk.description}</p>
                                                                     <p className="text-red-400/60 text-xs mt-1">Severidad: {risk.severity}</p>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+
+                                                {(detailData as AnalyzedContractDetail).keyClauses && (detailData as AnalyzedContractDetail).keyClauses.length > 0 && (
+                                                    <div>
+                                                        <h4 className="text-sm font-semibold text-yellow-400 mb-2">
+                                                            Letra Pequeña / Cláusulas Clave
+                                                        </h4>
+                                                        <ul className="space-y-2">
+                                                            {(detailData as AnalyzedContractDetail).keyClauses.map((clause, idx) => (
+                                                                <li key={idx} className="bg-yellow-900/20 border border-yellow-900/50 rounded-lg p-3">
+                                                                    <p className="text-yellow-200 font-medium text-sm">{clause.title}</p>
+                                                                    <p className="text-yellow-300/80 text-xs mt-1">{clause.description}</p>
+                                                                    {clause.clauseText && (
+                                                                        <p className="text-slate-400 text-xs mt-2 italic border-l-2 border-slate-600 pl-2">
+                                                                            "{clause.clauseText}"
+                                                                        </p>
+                                                                    )}
                                                                 </li>
                                                             ))}
                                                         </ul>

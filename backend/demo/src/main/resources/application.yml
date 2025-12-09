@@ -28,3 +28,5 @@ security:
     secret: ${JWT_SECRET:change_this_secret}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000} # 1 día
 
+openai:
+  api-key: ${OPENAI_API_KEY}

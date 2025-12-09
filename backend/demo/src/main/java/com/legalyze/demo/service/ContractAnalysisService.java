@@ -22,44 +22,38 @@ import lombok.RequiredArgsConstructor;
 public class ContractAnalysisService {
 
     private final ContractAnalysisRepository contractAnalysisRepository;
+    private final OpenAIService openAIService;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
     public ContractAnalysisResponse analyze(MultipartFile file) {
-        // TODO: cuando haya seguridad, asociar a User. De momento, null en user.
-        ContractAnalysis analysis = ContractAnalysis.builder()
-                .originalFileName(file.getOriginalFilename())
-                .uploadedAt(LocalDateTime.now())
-                .status(AnalysisStatus.COMPLETED)
-                .summary("Resumen corto del contrato (dummy)")
-                .rawText(null)
-                .keyClausesJson(null)
-                .risksJson(null)
-                .llmModelUsed("dummy-model")
-                .errorMessage(null)
-                .build();
+        // 1. Analyze with OpenAI
+        ContractAnalysisResponse aiResponse = openAIService.analyzeContract(file);
 
-        analysis = contractAnalysisRepository.save(analysis);
+        // 2. Save to DB
+        try {
+            ContractAnalysis analysis = ContractAnalysis.builder()
+                    .originalFileName(file.getOriginalFilename())
+                    .uploadedAt(LocalDateTime.now())
+                    .status(AnalysisStatus.COMPLETED)
+                    .summary(aiResponse.getSummary())
+                    .keyClausesJson(objectMapper.writeValueAsString(aiResponse.getKeyClauses()))
+                    .risksJson(objectMapper.writeValueAsString(aiResponse.getRisks()))
+                    .llmModelUsed("gpt-4o")
+                    .build();
 
-        // Construimos respuesta dummy
-        ClauseDto clauseDto = new ClauseDto();
-        clauseDto.setTitle("Duración del contrato");
-        clauseDto.setDescription("El contrato tiene una duración de 12 meses (dummy).");
-        clauseDto.setClauseText("Texto literal opcional...");
-        clauseDto.setRiskLevel("LOW");
+            analysis = contractAnalysisRepository.save(analysis);
 
-        RiskDto riskDto = new RiskDto();
-        riskDto.setTitle("Clausula de penalización");
-        riskDto.setDescription("Penalización de 3 mensualidades si se rompe antes (dummy)");
-        riskDto.setSeverity("LOW");
+            // 3. Return response with ID
+            aiResponse.setId(analysis.getId());
+            aiResponse.setOriginalFileName(analysis.getOriginalFileName());
+            aiResponse.setUploadedAt(analysis.getUploadedAt());
+            aiResponse.setStatus(analysis.getStatus().name());
 
-        ContractAnalysisResponse resp = new ContractAnalysisResponse();
-        resp.setId(analysis.getId());
-        resp.setOriginalFileName(analysis.getOriginalFileName());
-        resp.setUploadedAt(analysis.getUploadedAt());
-        resp.setStatus(analysis.getStatus().name());
-        resp.setSummary(analysis.getSummary());
-        resp.setKeyClauses(List.of(clauseDto));
-        resp.setRisks(List.of(riskDto));
-        return resp;
+            return aiResponse;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error saving analysis", e);
+        }
     }
 
     public List<ContractAnalysisListItemDto> listAll() {
@@ -81,26 +75,31 @@ public class ContractAnalysisService {
         ContractAnalysis a = contractAnalysisRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Analysis not found: " + id));
 
-        // Mismo dummy que analyze, pero usando datos del registro
-        ClauseDto clause = new ClauseDto();
-        clause.setTitle("Duración del contrato");
-        clause.setDescription("El contrato tiene una duración de 12 meses (dummy).");
-        clause.setClauseText("Texto literal opcional...");
-        clause.setRiskLevel("LOW");
-
-        RiskDto risk = new RiskDto();
-        risk.setTitle("Cláusula de penalización");
-        risk.setDescription("Penalización de 3 mensualidades si se rompe antes (dummy).");
-        risk.setSeverity("HIGH");
-
         ContractAnalysisResponse resp = new ContractAnalysisResponse();
         resp.setId(a.getId());
         resp.setOriginalFileName(a.getOriginalFileName());
         resp.setUploadedAt(a.getUploadedAt());
         resp.setStatus(a.getStatus().name());
         resp.setSummary(a.getSummary());
-        resp.setKeyClauses(List.of(clause));
-        resp.setRisks(List.of(risk));
+
+        try {
+            if (a.getKeyClausesJson() != null) {
+                List<ClauseDto> clauses = objectMapper.readValue(
+                        a.getKeyClausesJson(),
+                        objectMapper.getTypeFactory().constructCollectionType(List.class, ClauseDto.class));
+                resp.setKeyClauses(clauses);
+            }
+            if (a.getRisksJson() != null) {
+                List<RiskDto> risks = objectMapper.readValue(
+                        a.getRisksJson(),
+                        objectMapper.getTypeFactory().constructCollectionType(List.class, RiskDto.class));
+                resp.setRisks(risks);
+            }
+        } catch (Exception e) {
+            // Log error but return what we have
+            e.printStackTrace();
+        }
+
         return resp;
     }
 }
