@@ -14,6 +14,7 @@ import com.legalyze.demo.dto.RiskDto;
 import com.legalyze.demo.model.AnalysisStatus;
 import com.legalyze.demo.model.ContractAnalysis;
 import com.legalyze.demo.repository.ContractAnalysisRepository;
+import com.legalyze.demo.service.UserService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,9 +24,13 @@ public class ContractAnalysisService {
 
     private final ContractAnalysisRepository contractAnalysisRepository;
     private final OpenAIService openAIService;
+    private final UserService userService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
     public ContractAnalysisResponse analyze(MultipartFile file) {
+        // 0. Check and consume credits
+        userService.consumeAnalysisCredit();
+
         // 1. Analyze with OpenAI
         ContractAnalysisResponse aiResponse = openAIService.analyzeContract(file);
 

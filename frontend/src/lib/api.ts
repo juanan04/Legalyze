@@ -12,3 +12,18 @@ api.interceptors.request.use((config) => {
     }
     return config;
 });
+
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.data) {
+            // Check if backend returned a structured ErrorResponse
+            const backendError = error.response.data;
+            if (backendError.message) {
+                // Return a new error with the backend message
+                return Promise.reject(new Error(backendError.message));
+            }
+        }
+        return Promise.reject(error);
+    }
+);

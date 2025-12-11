@@ -108,6 +108,19 @@ const DashboardPage = () => {
                 </div>
 
                 <div className="flex items-center gap-4 mt-4 sm:mt-0">
+                    {/* Credits Display */}
+                    <div className="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700">
+                        {!user?.freeAnalysisUsed ? (
+                            <span className="text-emerald-400 font-medium text-sm">
+                                ✨ Prueba Gratuita Disponible
+                            </span>
+                        ) : (
+                            <span className="text-blue-400 font-medium text-sm">
+                                💳 Créditos: {user?.credits ?? 0}
+                            </span>
+                        )}
+                    </div>
+
                     {/* Avatar */}
                     <div
                         className="w-10 h-10 rounded-full bg-orange-200 flex items-center justify-center overflow-hidden cursor-pointer"
@@ -127,6 +140,28 @@ const DashboardPage = () => {
                     </div>
                 </div>
             </header>
+
+            {/* Email Verification Warning */}
+            {!user?.emailVerified && (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 mb-8 flex items-start gap-4">
+                    <div className="p-2 bg-yellow-500/20 rounded-lg">
+                        <User className="w-6 h-6 text-yellow-500" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-semibold text-yellow-500 mb-1">
+                            Verifica tu correo electrónico
+                        </h3>
+                        <p className="text-slate-300 text-sm">
+                            Para acceder a todas las funciones como analizar y generar contratos, necesitas verificar tu correo electrónico.
+                            Revisa tu bandeja de entrada (y spam).
+                            <br />
+                            <span className="text-xs opacity-80 mt-1 block">
+                                ¿Ya has verificado? Prueba a <button onClick={() => { localStorage.removeItem("auth_token"); localStorage.removeItem("auth_user"); window.location.href = "/login"; }} className="underline hover:text-white">cerrar sesión</button> e iniciar de nuevo.
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {/* Tarjetas principales */}
             <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">

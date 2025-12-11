@@ -27,7 +27,11 @@ interface AnalysisResult {
     risks: Risk[];
 }
 
+import { useAuth } from "../../context/AuthContext";
+import { Lock } from "lucide-react";
+
 const AnalyzeContractPage = () => {
+    const { user, updateUser } = useAuth();
     const navigate = useNavigate();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -36,6 +40,54 @@ const AnalyzeContractPage = () => {
     const [progress, setProgress] = useState(0);
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    if (!user?.emailVerified) {
+        return (
+            <DashboardLayout>
+                <div className="relative min-h-[60vh] flex items-center justify-center">
+                    {/* Blurred Background Content */}
+                    <div className="absolute inset-0 filter blur-sm opacity-50 pointer-events-none select-none">
+                        <div className="max-w-3xl mx-auto py-8 sm:py-10 lg:py-12 space-y-10 p-8">
+                            <header className="flex items-center gap-3">
+                                <h1 className="text-2xl sm:text-3xl font-bold text-white">
+                                    Analizar contrato
+                                </h1>
+                            </header>
+                            <section className="text-center space-y-6">
+                                <div className="flex justify-center">
+                                    <div className="w-24 h-24 rounded-full bg-[#2563EB]/15 flex items-center justify-center">
+                                        <span className="text-4xl">📄</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-semibold text-white">
+                                        Sube un contrato para analizar
+                                    </h2>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+
+                    {/* Overlay Message */}
+                    <div className="relative z-10 bg-slate-900 border border-slate-700 p-8 rounded-2xl shadow-2xl max-w-md text-center">
+                        <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Lock className="w-8 h-8 text-yellow-500" />
+                        </div>
+                        <h2 className="text-xl font-bold text-white mb-2">Función Bloqueada</h2>
+                        <p className="text-slate-400 mb-6">
+                            Para analizar contratos con IA, necesitas verificar tu correo electrónico primero.
+                        </p>
+                        <button
+                            onClick={() => navigate("/dashboard")}
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+                        >
+                            Volver al Dashboard
+                        </button>
+                    </div>
+                </div>
+            </DashboardLayout>
+        );
+    }
 
     const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -71,6 +123,10 @@ const AnalyzeContractPage = () => {
                 },
             });
 
+            // Refresh user profile to update credits/freeAnalysisUsed
+            const profileRes = await api.get("/api/users/me");
+            updateUser(profileRes.data);
+
             clearInterval(interval);
             setProgress(100);
             // Small delay to show 100% before showing results
@@ -82,7 +138,11 @@ const AnalyzeContractPage = () => {
         } catch (err) {
             clearInterval(interval);
             console.error(err);
-            setError("Hubo un error al analizar el contrato. Por favor intenta de nuevo.");
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError("Hubo un error al analizar el contrato. Por favor intenta de nuevo.");
+            }
             setIsAnalyzing(false);
         }
     };

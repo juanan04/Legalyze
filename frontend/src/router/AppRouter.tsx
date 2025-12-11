@@ -5,6 +5,7 @@ import { AuthProvider } from "../context/AuthContext";
 import LoginPage from "../pages/auth/LoginPage";
 import LandingPage from "../pages/LandingPage";
 import RegisterPage from "../pages/auth/RegisterPage";
+import VerifyEmailPage from "../pages/public/VerifyEmailPage";
 
 import DashboardPage from "../pages/private/DashboardPage";
 import AnalyzeContractPage from "../pages/private/AnalyzeContractPage";
@@ -22,6 +23,7 @@ const AppRouter = () => (
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/verify-email" element={<VerifyEmailPage />} />
 
                 {/* Privadas */}
                 <Route element={<ProtectedRoute />}>

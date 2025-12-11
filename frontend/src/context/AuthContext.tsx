@@ -12,6 +12,9 @@ export type User = {
     name: string;
     email: string;
     profileImage?: string;
+    credits: number;
+    freeAnalysisUsed: boolean;
+    emailVerified: boolean;
 };
 
 type AuthContextValue = {

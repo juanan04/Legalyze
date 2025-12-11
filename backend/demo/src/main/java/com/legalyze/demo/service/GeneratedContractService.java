@@ -22,8 +22,11 @@ public class GeneratedContractService {
 
     private final GeneratedContractRepository generatedContractRepository;
     private final ObjectMapper objectMapper;
+    private final UserService userService;
 
     public GenerateContractResponse generate(GenerateContractRequest request) {
+        userService.validateUserAccess();
+
         // Nombre de plantilla dummy. Más adelante lo leeremos de ContractTemplate.
         String templateName = "Plantilla " + request.getTemplateCode();
 

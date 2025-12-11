@@ -11,4 +11,7 @@ public class UserProfileDto {
     private String email;
     private String profileImage;
     private LocalDateTime createdAt;
+    private Integer credits;
+    private Boolean freeAnalysisUsed;
+    private Boolean emailVerified;
 }
