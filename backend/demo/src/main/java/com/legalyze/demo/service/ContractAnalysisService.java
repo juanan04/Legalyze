@@ -31,6 +31,15 @@ public class ContractAnalysisService {
         // 0. Check and consume credits
         userService.consumeAnalysisCredit();
 
+        // 0.1 Validate File Type
+        String contentType = file.getContentType();
+        if (contentType == null ||
+                (!contentType.equals("application/pdf") &&
+                        !contentType
+                                .equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document"))) {
+            throw new IllegalArgumentException("Invalid file type. Only PDF and DOCX are allowed.");
+        }
+
         // 1. Analyze with OpenAI
         ContractAnalysisResponse aiResponse = openAIService.analyzeContract(file);
 

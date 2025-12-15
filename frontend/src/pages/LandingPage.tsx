@@ -11,7 +11,17 @@ const LandingPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans selection:bg-blue-500/30">
+        <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans selection:bg-blue-500/30 relative">
+            {/* Nav */}
+            <nav className="absolute top-0 right-0 p-6 z-10">
+                <Link
+                    to="/login"
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-slate-600 text-slate-300 hover:text-white transition-all duration-200 backdrop-blur-sm text-sm font-medium group"
+                >
+                    <span className="opacity-70 group-hover:opacity-100">🔐</span>
+                    Ya tengo cuenta
+                </Link>
+            </nav>
             <main className="w-full max-w-5xl mx-auto px-4 md:px-6 py-12 md:py-20 flex flex-col items-center">
 
                 {/* 1) HERO */}

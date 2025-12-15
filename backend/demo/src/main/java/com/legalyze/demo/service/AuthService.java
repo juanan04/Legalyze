@@ -23,7 +23,19 @@ public class AuthService {
     private final JwtService jwtService;
     private final EmailService emailService;
 
+    private final java.util.Set<String> DISPOSABLE_DOMAINS = java.util.Set.of(
+            "yopmail.com", "tempmail.com", "guerrillamail.com", "10minutemail.com", "mailinator.com");
+
+    private boolean isDisposableEmail(String email) {
+        String domain = email.substring(email.indexOf("@") + 1).toLowerCase();
+        return DISPOSABLE_DOMAINS.contains(domain);
+    }
+
     public RegisterResponse register(RegisterRequest request) {
+        if (isDisposableEmail(request.getEmail())) {
+            throw new IllegalArgumentException("Email domain not allowed. Please use a work or personal email.");
+        }
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("Email already exists");
         }

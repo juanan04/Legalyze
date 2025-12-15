@@ -1,4 +1,4 @@
-import { useState, useRef, type ChangeEvent } from "react";
+import { useState, useRef, type ChangeEvent, type DragEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import AccordionCard from "../../components/common/AccordionCard";
@@ -28,7 +28,7 @@ interface AnalysisResult {
 }
 
 import { useAuth } from "../../context/AuthContext";
-import { Lock } from "lucide-react";
+import { Lock, Upload, FileText, AlertCircle, X } from "lucide-react";
 
 const AnalyzeContractPage = () => {
     const { user, updateUser } = useAuth();
@@ -40,6 +40,43 @@ const AnalyzeContractPage = () => {
     const [progress, setProgress] = useState(0);
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
+
+    const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const droppedFiles = e.dataTransfer.files;
+        if (droppedFiles && droppedFiles[0]) {
+            validateAndUpload(droppedFiles[0]);
+        }
+    };
+
+    const validateAndUpload = (selectedFile: File) => {
+        // Frontend validation
+        if (selectedFile.size > 5 * 1024 * 1024) {
+            setError("El archivo es demasiado grande. El tamaño máximo es 5MB.");
+            return;
+        }
+
+        const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+        if (!validTypes.includes(selectedFile.type)) {
+            setError("Formato no soportado. Solo se aceptan archivos PDF y DOCX.");
+            return;
+        }
+
+        setFile(selectedFile);
+        handleUpload(selectedFile);
+    };
 
     if (!user?.emailVerified) {
         return (
@@ -91,9 +128,7 @@ const AnalyzeContractPage = () => {
 
     const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            const selectedFile = e.target.files[0];
-            setFile(selectedFile);
-            handleUpload(selectedFile);
+            validateAndUpload(e.target.files[0]);
         }
     };
 
@@ -147,6 +182,10 @@ const AnalyzeContractPage = () => {
         }
     };
 
+    // Close error alert
+    const closeError = () => setError(null);
+
+
     return (
         <DashboardLayout>
             <div className="max-w-3xl mx-auto py-8 sm:py-10 lg:py-12 space-y-10">
@@ -165,43 +204,71 @@ const AnalyzeContractPage = () => {
                 </header>
 
                 {/* Upload section */}
+                {/* Upload section */}
                 {!analysisResult && !isAnalyzing && (
                     <section className="text-center space-y-6">
-                        <div className="flex justify-center">
-                            <div className="w-24 h-24 rounded-full bg-[#2563EB]/15 flex items-center justify-center">
-                                <span className="text-4xl">📄</span>
+
+                        {/* Error Alert */}
+                        {error && (
+                            <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 flex items-start gap-3 text-left">
+                                <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                    <h3 className="text-red-500 font-medium">Error</h3>
+                                    <p className="text-red-400 text-sm mt-1">{error}</p>
+                                </div>
+                                <button onClick={closeError} className="text-red-400 hover:text-red-300">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        )}
+
+                        <div
+                            className={`border-2 border-dashed rounded-xl p-8 transition-colors ${isDragging
+                                ? "border-blue-500 bg-blue-500/10"
+                                : "border-slate-700 hover:border-slate-600 bg-slate-900/50"
+                                }`}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                        >
+                            <div className="flex flex-col items-center justify-center space-y-4">
+                                <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-colors ${isDragging ? "bg-blue-500/20" : "bg-slate-800"
+                                    }`}>
+                                    <Upload className={`w-10 h-10 ${isDragging ? "text-blue-500" : "text-slate-400"
+                                        }`} />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <h2 className="text-xl font-semibold text-white">
+                                        Arrastra y suelta tu contrato aquí
+                                    </h2>
+                                    <p className="text-slate-400 text-sm">
+                                        o si prefieres
+                                    </p>
+                                </div>
+
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileSelect}
+                                    accept=".pdf,.docx"
+                                    className="hidden"
+                                />
+
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="inline-flex items-center gap-2 bg-[#2563EB] text-white text-sm font-semibold py-2.5 px-6 rounded-lg shadow-md hover:bg-[#1D4ED8] transition-colors"
+                                >
+                                    <FileText className="w-4 h-4" />
+                                    Seleccionar archivo
+                                </button>
+
+                                <p className="text-xs text-slate-500 pt-2">
+                                    Soporta PDF y DOCX hasta 5MB
+                                </p>
                             </div>
                         </div>
-
-                        <div>
-                            <h2 className="text-2xl font-semibold text-white">
-                                Sube un contrato para analizar
-                            </h2>
-                            <p className="mt-2 text-sm text-slate-400 max-w-md mx-auto">
-                                Sube tu archivo en formato PDF o DOCX para que Legalyze pueda
-                                revisarlo por ti.
-                            </p>
-                        </div>
-
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleFileSelect}
-                            accept=".pdf,.docx"
-                            className="hidden"
-                        />
-
-                        <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="inline-flex justify-center bg-[#2563EB] text-white text-sm font-semibold py-3 px-8 rounded-lg shadow-md hover:bg-[#1D4ED8] transition-colors"
-                        >
-                            Subir contrato
-                        </button>
-
-                        {error && (
-                            <p className="text-red-400 text-sm mt-4">{error}</p>
-                        )}
                     </section>
                 )}
 

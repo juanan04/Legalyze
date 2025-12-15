@@ -5,7 +5,9 @@ import { AuthProvider } from "../context/AuthContext";
 import LoginPage from "../pages/auth/LoginPage";
 import LandingPage from "../pages/LandingPage";
 import RegisterPage from "../pages/auth/RegisterPage";
+
 import VerifyEmailPage from "../pages/public/VerifyEmailPage";
+import NotFoundPage from "../pages/public/NotFoundPage";
 
 import DashboardPage from "../pages/private/DashboardPage";
 import AnalyzeContractPage from "../pages/private/AnalyzeContractPage";
@@ -35,7 +37,8 @@ const AppRouter = () => (
                 </Route>
 
                 {/* 404 opcional */}
-                {/* <Route path="*" element={<NotFoundPage />} /> */}
+                {/* 404 */}
+                <Route path="*" element={<NotFoundPage />} />
             </Routes>
         </AuthProvider>
     </BrowserRouter>
