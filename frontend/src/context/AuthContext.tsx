@@ -3,6 +3,7 @@ import {
     createContext,
     useContext,
     useState,
+    useCallback,
 } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
@@ -36,26 +37,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
     const navigate = useNavigate();
 
-    const login = (jwt: string, userData: User) => {
+    const login = useCallback((jwt: string, userData: User) => {
         setToken(jwt);
         setUser(userData);
         localStorage.setItem("auth_token", jwt);
         localStorage.setItem("auth_user", JSON.stringify(userData));
         navigate("/dashboard", { replace: true });
-    };
+    }, [navigate]);
 
-    const logout = () => {
+    const logout = useCallback(() => {
         setToken(null);
         setUser(null);
         localStorage.removeItem("auth_token");
         localStorage.removeItem("auth_user");
         navigate("/login", { replace: true });
-    };
+    }, [navigate]);
 
-    const updateUser = (userData: User) => {
+    const updateUser = useCallback((userData: User) => {
         setUser(userData);
         localStorage.setItem("auth_user", JSON.stringify(userData));
-    };
+    }, []);
 
     return (
         <AuthContext.Provider

@@ -109,14 +109,17 @@ const DashboardPage = () => {
 
                 <div className="flex items-center gap-4 mt-4 sm:mt-0">
                     {/* Credits Display */}
-                    <div className="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700">
+                    <div
+                        className="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors"
+                        onClick={() => navigate("/pricing")}
+                    >
                         {!user?.freeAnalysisUsed ? (
                             <span className="text-emerald-400 font-medium text-sm">
                                 ✨ Prueba Gratuita Disponible
                             </span>
                         ) : (
                             <span className="text-blue-400 font-medium text-sm">
-                                💳 Créditos: {user?.credits ?? 0}
+                                💳 Créditos: {user?.credits ?? 0} <span className="text-slate-500 text-xs ml-1">(Comprar)</span>
                             </span>
                         )}
                     </div>

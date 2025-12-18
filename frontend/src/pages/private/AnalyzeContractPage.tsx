@@ -174,7 +174,11 @@ const AnalyzeContractPage = () => {
             clearInterval(interval);
             console.error(err);
             if (err instanceof Error) {
-                setError(err.message);
+                if (err.message === "NO_CREDITS") {
+                    setError("NO_CREDITS");
+                } else {
+                    setError(err.message);
+                }
             } else {
                 setError("Hubo un error al analizar el contrato. Por favor intenta de nuevo.");
             }
@@ -210,13 +214,36 @@ const AnalyzeContractPage = () => {
 
                         {/* Error Alert */}
                         {error && (
-                            <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 flex items-start gap-3 text-left">
-                                <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                            <div className={`border rounded-lg p-4 flex items-start gap-3 text-left ${error === "NO_CREDITS"
+                                    ? "bg-blue-500/10 border-blue-500/50"
+                                    : "bg-red-500/10 border-red-500/50"
+                                }`}>
+                                <AlertCircle className={`w-5 h-5 shrink-0 mt-0.5 ${error === "NO_CREDITS" ? "text-blue-500" : "text-red-500"
+                                    }`} />
                                 <div className="flex-1">
-                                    <h3 className="text-red-500 font-medium">Error</h3>
-                                    <p className="text-red-400 text-sm mt-1">{error}</p>
+                                    <h3 className={`font-medium ${error === "NO_CREDITS" ? "text-blue-500" : "text-red-500"
+                                        }`}>
+                                        {error === "NO_CREDITS" ? "Sin créditos suficientes" : "Error"}
+                                    </h3>
+
+                                    {error === "NO_CREDITS" ? (
+                                        <div className="mt-1">
+                                            <p className="text-blue-400 text-sm mb-2">
+                                                Has agotado tus créditos de análisis. Necesitas recargar para continuar.
+                                            </p>
+                                            <button
+                                                onClick={() => navigate("/pricing")}
+                                                className="text-white bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                                            >
+                                                Comprar créditos
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <p className="text-red-400 text-sm mt-1">{error}</p>
+                                    )}
                                 </div>
-                                <button onClick={closeError} className="text-red-400 hover:text-red-300">
+                                <button onClick={closeError} className={`${error === "NO_CREDITS" ? "text-blue-400 hover:text-blue-300" : "text-red-400 hover:text-red-300"
+                                    }`}>
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>

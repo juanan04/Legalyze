@@ -15,6 +15,9 @@ import GenerateContractPage from "../pages/private/GenerateContractPage";
 import HistoryPage from "../pages/private/HistoryPage";
 import ProfilePage from "../pages/private/ProfilePage";
 
+import PricingPage from "../pages/private/PricingPage";
+import PaymentStatusPage from "../pages/private/PaymentStatusPage";
+
 import ProtectedRoute from "./ProtectedRoute";
 
 const AppRouter = () => (
@@ -34,6 +37,9 @@ const AppRouter = () => (
                     <Route path="/contracts/generate" element={<GenerateContractPage />} />
                     <Route path="/history" element={<HistoryPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/pricing" element={<PricingPage />} />
+                    <Route path="/payment/success" element={<PaymentStatusPage />} />
+                    <Route path="/payment/cancel" element={<PaymentStatusPage />} />
                 </Route>
 
                 {/* 404 opcional */}

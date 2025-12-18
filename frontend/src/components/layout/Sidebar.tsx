@@ -78,6 +78,17 @@ const Sidebar = () => {
                 </NavLink>
 
                 <NavLink
+                    to="/pricing"
+                    className={({ isActive }) =>
+                        `${navItemBase} ${isActive ? navItemActive : navItemInactive
+                        }`
+                    }
+                >
+                    <span className="w-5 h-5 flex items-center justify-center font-bold text-lg">€</span>
+                    <span>Comprar Créditos</span>
+                </NavLink>
+
+                <NavLink
                     to="/profile"
                     className={({ isActive }) =>
                         `${navItemBase} ${isActive ? navItemActive : navItemInactive
