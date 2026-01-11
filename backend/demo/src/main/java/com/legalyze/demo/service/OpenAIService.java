@@ -3,11 +3,8 @@ package com.legalyze.demo.service;
 import java.io.IOException;
 import java.util.List;
 
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.legalyze.demo.dto.ClauseDto;
@@ -20,33 +17,32 @@ import com.openai.models.ChatCompletionSystemMessageParam;
 import com.openai.models.ChatCompletionUserMessageParam;
 
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
-public class OpenAIService {
+@RequiredArgsConstructor
+public class OpenAIService implements AIService {
 
   @Value("${openai.api-key}")
   private String apiKey;
 
   private final ObjectMapper objectMapper = new ObjectMapper();
 
-  public ContractAnalysisResponse analyzeContract(MultipartFile file) {
-    log.info("Starting contract analysis for file: {}", file.getOriginalFilename());
+  @Override
+  public ContractAnalysisResponse analyze(String text) {
+    log.info("Starting contract analysis with OpenAI");
 
     try {
-      // 1. Extract text from PDF
-      String contractText = extractTextFromPdf(file);
-      log.info("Extracted {} characters from PDF", contractText.length());
-
-      // 2. Call OpenAI API
-      String jsonResponse = callOpenAI(contractText);
+      // 1. Call OpenAI API
+      String jsonResponse = callOpenAI(text);
       log.info("Received response from OpenAI");
 
-      // 3. Parse JSON
+      // 2. Parse JSON
       AnalysisResult result = objectMapper.readValue(jsonResponse, AnalysisResult.class);
 
-      // 4. Map to Response
+      // 3. Map to Response
       ContractAnalysisResponse response = new ContractAnalysisResponse();
       response.setSummary(result.getSummary());
       response.setKeyClauses(result.getKeyClauses());
@@ -61,13 +57,6 @@ public class OpenAIService {
     } catch (Exception e) {
       log.error("Error analyzing contract", e);
       throw new RuntimeException("Failed to analyze contract: " + e.getMessage(), e);
-    }
-  }
-
-  private String extractTextFromPdf(MultipartFile file) throws IOException {
-    try (PDDocument document = PDDocument.load(file.getInputStream())) {
-      PDFTextStripper stripper = new PDFTextStripper();
-      return stripper.getText(document);
     }
   }
 
@@ -104,7 +93,7 @@ public class OpenAIService {
         """;
 
     ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-        .model("gpt-4o") // Use string to avoid enum issues
+        .model("gpt-4o-mini") // Use string to avoid enum issues
         .addMessage(ChatCompletionSystemMessageParam.builder()
             .content(systemPrompt)
             .build())

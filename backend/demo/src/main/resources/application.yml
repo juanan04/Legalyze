@@ -36,6 +36,9 @@ security:
 openai:
   api-key: ${OPENAI_API_KEY}
 
+gemini:
+  api-key: ${GEMINI_API_KEY}
+
 resend:
   api-key: ${RESEND_API_KEY}
   from-email: ${RESEND_FROM_EMAIL}
@@ -45,3 +48,6 @@ stripe:
   webhook-secret: ${STRIPE_WEBHOOK_SECRET}
   success-url: ${STRIPE_SUCCESS_URL:http://localhost:5173/payment/success}
   cancel-url: ${STRIPE_CANCEL_URL:http://localhost:5173/payment/cancel}
+
+ai:
+  provider: ${AI_PROVIDER}

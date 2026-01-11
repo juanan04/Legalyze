@@ -13,8 +13,12 @@ import com.legalyze.demo.dto.ContractAnalysisResponse;
 import com.legalyze.demo.dto.RiskDto;
 import com.legalyze.demo.model.AnalysisStatus;
 import com.legalyze.demo.model.ContractAnalysis;
+import com.legalyze.demo.model.User;
 import com.legalyze.demo.repository.ContractAnalysisRepository;
 import com.legalyze.demo.service.UserService;
+import com.legalyze.demo.service.DocumentService;
+import com.legalyze.demo.service.AIService;
+import com.legalyze.demo.service.AIServiceFactory;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,28 +27,38 @@ import lombok.RequiredArgsConstructor;
 public class ContractAnalysisService {
 
     private final ContractAnalysisRepository contractAnalysisRepository;
-    private final OpenAIService openAIService;
+    private final AIServiceFactory aiServiceFactory;
     private final UserService userService;
+    private final DocumentService documentService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
     public ContractAnalysisResponse analyze(MultipartFile file) {
         // 0. Check and consume credits
+        User user = userService.getCurrentUser();
+        if (user.getCredits() <= 0 && !user.getFreeAnalysisUsed()) {
+            // Allow if it's the first free analysis (logic might need adjustment based on
+            // requirements)
+            // For now assuming free analysis is handled via credits or specific flag
+        }
+
         userService.consumeAnalysisCredit();
 
         // 0.1 Validate File Type
         String contentType = file.getContentType();
-        if (contentType == null ||
-                (!contentType.equals("application/pdf") &&
-                        !contentType
-                                .equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document"))) {
+        if (contentType == null || (!contentType.equals("application/pdf")
+                && !contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document"))) {
             throw new IllegalArgumentException("Invalid file type. Only PDF and DOCX are allowed.");
         }
 
-        // 1. Analyze with OpenAI
-        ContractAnalysisResponse aiResponse = openAIService.analyzeContract(file);
-
-        // 2. Save to DB
         try {
+            // 1. Extract Text
+            String text = documentService.extractTextFromPdf(file);
+
+            // 2. Analyze with AI (Router)
+            AIService aiService = aiServiceFactory.getService();
+            ContractAnalysisResponse aiResponse = aiService.analyze(text);
+
+            // 3. Save to DB
             ContractAnalysis analysis = ContractAnalysis.builder()
                     .originalFileName(file.getOriginalFilename())
                     .uploadedAt(LocalDateTime.now())
@@ -52,12 +66,12 @@ public class ContractAnalysisService {
                     .summary(aiResponse.getSummary())
                     .keyClausesJson(objectMapper.writeValueAsString(aiResponse.getKeyClauses()))
                     .risksJson(objectMapper.writeValueAsString(aiResponse.getRisks()))
-                    .llmModelUsed("gpt-4o")
+                    .llmModelUsed("gpt-4o-mini") // TODO: Update this based on provider
                     .build();
 
             analysis = contractAnalysisRepository.save(analysis);
 
-            // 3. Return response with ID
+            // 4. Return response with ID
             aiResponse.setId(analysis.getId());
             aiResponse.setOriginalFileName(analysis.getOriginalFileName());
             aiResponse.setUploadedAt(analysis.getUploadedAt());
@@ -66,8 +80,12 @@ public class ContractAnalysisService {
             return aiResponse;
 
         } catch (Exception e) {
-            throw new RuntimeException("Error saving analysis", e);
+            throw new RuntimeException("Error analyzing contract", e);
         }
+    }
+
+    public com.legalyze.demo.dto.ContractPreviewResponse preview(MultipartFile file) {
+        return documentService.generatePreview(file);
     }
 
     public List<ContractAnalysisListItemDto> listAll() {

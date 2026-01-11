@@ -31,6 +31,12 @@ public class ContractAnalysisController {
         return ResponseEntity.ok(contractAnalysisService.analyze(file));
     }
 
+    @PostMapping("/preview")
+    public ResponseEntity<com.legalyze.demo.dto.ContractPreviewResponse> preview(
+            @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(contractAnalysisService.preview(file));
+    }
+
     @GetMapping("/analysis")
     public ResponseEntity<List<ContractAnalysisListItemDto>> listAll() {
         return ResponseEntity.ok(contractAnalysisService.listAll());

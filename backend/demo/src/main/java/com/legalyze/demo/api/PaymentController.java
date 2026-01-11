@@ -35,7 +35,6 @@ public class PaymentController {
     @PostMapping("/webhook")
     public ResponseEntity<String> handleWebhook(@RequestBody String payload,
             @RequestHeader("Stripe-Signature") String sigHeader) {
-        System.err.println("DEBUG: PaymentController received webhook request");
         try {
             paymentService.handleWebhook(payload, sigHeader);
             return ResponseEntity.ok("Received");

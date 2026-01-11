@@ -113,6 +113,12 @@
 			<artifactId>openai-java-client-okhttp</artifactId>
 			<version>0.18.0</version>
 		</dependency>
+		<!-- Google Gen AI -->
+		<dependency>
+			<groupId>com.google.genai</groupId>
+			<artifactId>google-genai</artifactId>
+			<version>0.1.0</version>
+		</dependency>
 		<!-- PDFBox for text extraction -->
 		<dependency>
 			<groupId>org.apache.pdfbox</groupId>

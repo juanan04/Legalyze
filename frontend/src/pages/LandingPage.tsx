@@ -107,7 +107,7 @@ const LandingPage = () => {
                         </li>
                     </ul>
                     <p className="text-sm text-slate-500 font-medium bg-slate-950/30 py-2 px-4 rounded-full inline-block">
-                        Análisis adicionales desde 1,99€ (1 crédito)
+                        Análisis adicionales desde 0,50€ (1 crédito)
                     </p>
                 </section>
 

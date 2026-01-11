@@ -27,8 +27,16 @@ interface AnalysisResult {
     risks: Risk[];
 }
 
+interface PreviewResult {
+    pageCount: number;
+    wordCount: number;
+    detectedSections: string[];
+    basicChecklist: Record<string, boolean>;
+    previewText: string;
+}
+
 import { useAuth } from "../../context/AuthContext";
-import { Lock, Upload, FileText, AlertCircle, X } from "lucide-react";
+import { Lock, Upload, FileText, AlertCircle, X, CheckCircle, FileSearch, Zap } from "lucide-react";
 
 const AnalyzeContractPage = () => {
     const { user, updateUser } = useAuth();
@@ -39,6 +47,7 @@ const AnalyzeContractPage = () => {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [progress, setProgress] = useState(0);
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+    const [previewResult, setPreviewResult] = useState<PreviewResult | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isDragging, setIsDragging] = useState(false);
 
@@ -75,7 +84,7 @@ const AnalyzeContractPage = () => {
         }
 
         setFile(selectedFile);
-        handleUpload(selectedFile);
+        handlePreview(selectedFile);
     };
 
     if (!user?.emailVerified) {
@@ -132,11 +141,39 @@ const AnalyzeContractPage = () => {
         }
     };
 
-    const handleUpload = async (fileToUpload: File) => {
+    const handlePreview = async (fileToUpload: File) => {
+        setIsAnalyzing(true);
+        setProgress(0); // Indeterminate or fast progress for preview
+        setError(null);
+        setPreviewResult(null);
+        setAnalysisResult(null);
+
+        try {
+            const formData = new FormData();
+            formData.append("file", fileToUpload);
+
+            const response = await api.post("/api/contracts/preview", formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
+            });
+
+            setPreviewResult(response.data);
+            setIsAnalyzing(false);
+
+        } catch (err) {
+            console.error(err);
+            setError("Error al generar la vista previa. Inténtalo de nuevo.");
+            setIsAnalyzing(false);
+        }
+    };
+
+    const handleAnalyze = async () => {
+        if (!file) return;
+
         setIsAnalyzing(true);
         setProgress(0);
         setError(null);
-        setAnalysisResult(null);
 
         // Simulate progress
         const interval = setInterval(() => {
@@ -150,7 +187,7 @@ const AnalyzeContractPage = () => {
 
         try {
             const formData = new FormData();
-            formData.append("file", fileToUpload);
+            formData.append("file", file);
 
             const response = await api.post("/api/contracts/analyze", formData, {
                 headers: {
@@ -208,15 +245,14 @@ const AnalyzeContractPage = () => {
                 </header>
 
                 {/* Upload section */}
-                {/* Upload section */}
-                {!analysisResult && !isAnalyzing && (
+                {!analysisResult && !previewResult && !isAnalyzing && (
                     <section className="text-center space-y-6">
 
                         {/* Error Alert */}
                         {error && (
                             <div className={`border rounded-lg p-4 flex items-start gap-3 text-left ${error === "NO_CREDITS"
-                                    ? "bg-blue-500/10 border-blue-500/50"
-                                    : "bg-red-500/10 border-red-500/50"
+                                ? "bg-blue-500/10 border-blue-500/50"
+                                : "bg-red-500/10 border-red-500/50"
                                 }`}>
                                 <AlertCircle className={`w-5 h-5 shrink-0 mt-0.5 ${error === "NO_CREDITS" ? "text-blue-500" : "text-red-500"
                                     }`} />
@@ -305,7 +341,9 @@ const AnalyzeContractPage = () => {
                 {isAnalyzing && (
                     <section className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
-                            <p className="font-semibold text-slate-200">Analizando…</p>
+                            <p className="font-semibold text-slate-200">
+                                {previewResult ? "Analizando con IA..." : "Generando vista previa..."}
+                            </p>
                             <p className="text-[#2563EB] font-semibold">{progress}%</p>
                         </div>
                         <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
@@ -317,6 +355,86 @@ const AnalyzeContractPage = () => {
                         <p className="text-xs text-slate-500">
                             {file?.name}
                         </p>
+                    </section>
+                )}
+
+                {/* Preview Result */}
+                {previewResult && !analysisResult && !isAnalyzing && (
+                    <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 space-y-6">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <FileSearch className="w-6 h-6 text-blue-500" />
+                                    Vista Previa del Documento
+                                </h2>
+                                <span className="text-sm text-slate-400">{file?.name}</span>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                <div className="bg-slate-800/50 p-4 rounded-lg text-center">
+                                    <p className="text-2xl font-bold text-white">{previewResult.pageCount}</p>
+                                    <p className="text-xs text-slate-400 uppercase tracking-wider">Páginas</p>
+                                </div>
+                                <div className="bg-slate-800/50 p-4 rounded-lg text-center">
+                                    <p className="text-2xl font-bold text-white">{previewResult.wordCount}</p>
+                                    <p className="text-xs text-slate-400 uppercase tracking-wider">Palabras</p>
+                                </div>
+                                <div className="bg-slate-800/50 p-4 rounded-lg text-center col-span-2">
+                                    <p className="text-lg font-semibold text-white truncate px-2">
+                                        {previewResult.detectedSections.length > 0 ? previewResult.detectedSections.length : 0}
+                                    </p>
+                                    <p className="text-xs text-slate-400 uppercase tracking-wider">Secciones Detectadas</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <h3 className="font-semibold text-slate-300">Validación Básica</h3>
+                                <div className="grid sm:grid-cols-2 gap-3">
+                                    {Object.entries(previewResult.basicChecklist).map(([key, value]) => (
+                                        <div key={key} className="flex items-center gap-2 text-sm">
+                                            {value ? (
+                                                <CheckCircle className="w-4 h-4 text-emerald-500" />
+                                            ) : (
+                                                <X className="w-4 h-4 text-slate-500" />
+                                            )}
+                                            <span className={value ? "text-slate-200" : "text-slate-500"}>{key}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {previewResult.detectedSections.length > 0 && (
+                                <div className="space-y-3">
+                                    <h3 className="font-semibold text-slate-300">Estructura Detectada</h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {previewResult.detectedSections.map((section, idx) => (
+                                            <span key={idx} className="px-2 py-1 bg-slate-800 text-slate-300 text-xs rounded-md border border-slate-700">
+                                                {section}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="pt-4 flex flex-col sm:flex-row gap-4">
+                                <button
+                                    onClick={handleAnalyze}
+                                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg shadow-blue-900/20 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Zap className="w-5 h-5" />
+                                    Analizar con IA (1 Crédito)
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setPreviewResult(null);
+                                        setFile(null);
+                                    }}
+                                    className="px-6 py-3 text-slate-400 hover:text-white transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
                     </section>
                 )}
 
@@ -411,6 +529,7 @@ const AnalyzeContractPage = () => {
                                 onClick={() => {
                                     setAnalysisResult(null);
                                     setFile(null);
+                                    setPreviewResult(null);
                                     setProgress(0);
                                 }}
                                 className="text-slate-400 hover:text-white text-sm"
