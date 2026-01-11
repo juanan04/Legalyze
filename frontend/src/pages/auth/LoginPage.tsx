@@ -5,7 +5,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { api } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 
-import logo from "../../assets/logo.png";
+
 
 const LoginPage = () => {
     const { login } = useAuth();
@@ -34,12 +34,10 @@ const LoginPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#0f172a] text-gray-100 flex items-center justify-center">
+        <div className="flex-grow flex items-center justify-center py-12">
             <div className="w-full max-w-md px-6 md:px-8">
                 {/* Logo + textos */}
                 <div className="flex flex-col items-center text-center mb-8">
-                    <img src={logo} alt="Legalyze Logo" className="w-20 h-20 rounded-xl mb-8" />
-
                     <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-2">
                         Bienvenido de vuelta
                     </h1>

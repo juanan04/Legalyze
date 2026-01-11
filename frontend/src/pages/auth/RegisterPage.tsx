@@ -5,7 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { Eye, EyeOff } from "lucide-react";
 
 import { api } from "../../lib/api";
-import logo from "../../assets/logo.png";
+
 
 const RegisterPage = () => {
     const [name, setName] = useState("");
@@ -71,12 +71,10 @@ const RegisterPage = () => {
 
 
     return (
-        <div className="min-h-screen bg-[#0f172a] text-gray-100 flex items-center justify-center px-4">
+        <div className="flex-grow flex items-center justify-center py-12 px-4">
             <div className="w-full max-w-md mx-auto">
                 {/* Icono + título */}
                 <div className="flex flex-col items-center justify-center mb-8 text-center">
-                    <img src={logo} alt="Legalyze Logo" className="w-20 h-20 rounded-xl mb-6" />
-
                     <h1 className="text-3xl font-extrabold text-white">
                         Crea tu cuenta
                     </h1>

@@ -14,21 +14,35 @@ import AnalyzeContractPage from "../pages/private/AnalyzeContractPage";
 import GenerateContractPage from "../pages/private/GenerateContractPage";
 import HistoryPage from "../pages/private/HistoryPage";
 import ProfilePage from "../pages/private/ProfilePage";
-
 import PricingPage from "../pages/private/PricingPage";
 import PaymentStatusPage from "../pages/private/PaymentStatusPage";
 
+import PrivacyPolicyPage from "../pages/public/legal/PrivacyPolicyPage";
+import TermsPage from "../pages/public/legal/TermsPage";
+import CookiesPolicyPage from "../pages/public/legal/CookiesPolicyPage";
+import DisclaimerPage from "../pages/public/legal/DisclaimerPage";
+
 import ProtectedRoute from "./ProtectedRoute";
+
+import PublicLayout from "../components/layout/PublicLayout";
 
 const AppRouter = () => (
     <BrowserRouter>
         <AuthProvider>
             <Routes>
-                {/* Públicas */}
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                <Route path="/verify-email" element={<VerifyEmailPage />} />
+                {/* Rutas Públicas con Layout */}
+                <Route element={<PublicLayout />}>
+                    <Route path="/" element={<LandingPage />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/register" element={<RegisterPage />} />
+                    <Route path="/verify-email" element={<VerifyEmailPage />} />
+
+                    {/* Legales */}
+                    <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                    <Route path="/terms" element={<TermsPage />} />
+                    <Route path="/cookies" element={<CookiesPolicyPage />} />
+                    <Route path="/disclaimer" element={<DisclaimerPage />} />
+                </Route>
 
                 {/* Privadas */}
                 <Route element={<ProtectedRoute />}>
@@ -42,7 +56,6 @@ const AppRouter = () => (
                     <Route path="/payment/cancel" element={<PaymentStatusPage />} />
                 </Route>
 
-                {/* 404 opcional */}
                 {/* 404 */}
                 <Route path="*" element={<NotFoundPage />} />
             </Routes>
