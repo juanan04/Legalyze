@@ -9,10 +9,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+import lombok.extern.log4j.Log4j2;
+
 @RestController
 @RequestMapping("/api/payments")
 @RequiredArgsConstructor
 @CrossOrigin
+@Log4j2
 public class PaymentController {
 
     private final PaymentService paymentService;
@@ -39,7 +42,7 @@ public class PaymentController {
             paymentService.handleWebhook(payload, sigHeader);
             return ResponseEntity.ok("Received");
         } catch (Exception e) {
-            System.err.println("Webhook Error: " + e.getMessage());
+            log.error("Webhook Error: {}", e.getMessage());
             return ResponseEntity.badRequest().body("Webhook Error: " + e.getMessage());
         }
     }

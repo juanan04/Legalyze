@@ -17,8 +17,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
+import lombok.extern.log4j.Log4j2;
+
 @Component
 @RequiredArgsConstructor
+@Log4j2
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
@@ -62,7 +65,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             } catch (Exception e) {
                 // User not found or other error, proceed without authentication
-                System.out.println("DEBUG: Authentication failed for user: " + userEmail + " - " + e.getMessage());
+                log.debug("Authentication failed for user: {} - {}", userEmail, e.getMessage());
             }
         }
         filterChain.doFilter(request, response);

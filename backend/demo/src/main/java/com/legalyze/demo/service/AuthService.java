@@ -15,8 +15,11 @@ import com.legalyze.demo.security.JwtService;
 
 import lombok.RequiredArgsConstructor;
 
+import lombok.extern.log4j.Log4j2;
+
 @Service
 @RequiredArgsConstructor
+@Log4j2
 public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -47,8 +50,7 @@ public class AuthService {
         }
 
         String verificationToken = java.util.UUID.randomUUID().toString();
-        System.out.println("DEBUG: Generated token for " + request.getEmail() + ": [" + verificationToken + "]"); // Debug
-                                                                                                                  // log
+        log.debug("Generated token for {}: [{}]", request.getEmail(), verificationToken);
 
         User user = User.builder()
                 .name(request.getName())
@@ -64,13 +66,14 @@ public class AuthService {
                 .build();
 
         user = userRepository.save(user);
-        System.out.println("DEBUG: User saved with ID: " + user.getId()); // Debug log
+        log.debug("User saved with ID: {}", user.getId());
 
+        // Send verification email
         // Send verification email
         try {
             emailService.sendVerificationEmail(user.getEmail(), verificationToken);
         } catch (Exception e) {
-            System.err.println("Failed to send email: " + e.getMessage());
+            log.error("Failed to send email: {}", e.getMessage());
         }
 
         String token = jwtService.generateToken(user);
@@ -119,23 +122,22 @@ public class AuthService {
     }
 
     public void verifyEmail(String token) {
-        System.out.println("DEBUG: Verifying email with token: [" + token + "]");
-        System.out.println("DEBUG: Token length: " + (token != null ? token.length() : "null"));
+        log.debug("Verifying email with token: [{}]", token);
+        log.debug("Token length: {}", (token != null ? token.length() : "null"));
 
         User user = userRepository.findByVerificationToken(token)
                 .orElseThrow(() -> {
-                    System.out.println("DEBUG: Token NOT found in DB: [" + token + "]");
+                    log.debug("Token NOT found in DB: [{}]", token);
                     // Try to list all tokens to see if there's a mismatch (ONLY FOR DEBUGGING)
                     userRepository.findAll().forEach(u -> {
                         if (u.getVerificationToken() != null) {
-                            System.out.println("DEBUG: Existing token in DB: [" + u.getVerificationToken()
-                                    + "] for user " + u.getEmail());
+                            log.debug("Existing token in DB: [{}] for user {}", u.getVerificationToken(), u.getEmail());
                         }
                     });
                     return new IllegalArgumentException("Invalid verification token");
                 });
 
-        System.out.println("DEBUG: Token found for user: " + user.getEmail());
+        log.debug("Token found for user: {}", user.getEmail());
 
         if (user.getVerificationTokenExpiry().isBefore(java.time.LocalDateTime.now())) {
             throw new IllegalArgumentException("Verification token expired");
@@ -145,7 +147,7 @@ public class AuthService {
         user.setVerificationToken(null);
         user.setVerificationTokenExpiry(null);
         userRepository.save(user);
-        System.out.println("DEBUG: User verified and saved.");
+        log.info("User verified and saved.");
     }
 
     public void resendVerificationEmail(String email) {

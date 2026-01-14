@@ -10,14 +10,13 @@ import com.stripe.net.Webhook;
 import com.stripe.param.checkout.SessionCreateParams;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @Service
 @RequiredArgsConstructor
+@Log4j2
 public class PaymentService {
 
     @Value("${stripe.api-key}")
@@ -83,17 +82,17 @@ public class PaymentService {
     }
 
     public void handleWebhook(String payload, String sigHeader) {
-        System.out.println("DEBUG: Webhook received. Payload length: " + payload.length());
+        log.debug("Webhook received. Payload length: {}", payload.length());
         Event event;
 
         try {
             event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
-            System.out.println("DEBUG: Webhook signature verified. Event type: " + event.getType());
+            log.debug("Webhook signature verified. Event type: {}", event.getType());
         } catch (SignatureVerificationException e) {
-            System.err.println("ERROR: Invalid signature: " + e.getMessage());
+            log.error("Invalid signature: {}", e.getMessage());
             throw new IllegalArgumentException("Invalid signature");
         } catch (Exception e) {
-            System.err.println("ERROR: Webhook error: " + e.getMessage());
+            log.error("Webhook error: {}", e.getMessage());
             throw new RuntimeException("Webhook error");
         }
 
@@ -102,33 +101,31 @@ public class PaymentService {
             if (event.getDataObjectDeserializer().getObject().isPresent()) {
                 session = (Session) event.getDataObjectDeserializer().getObject().get();
             } else {
-                System.out.println("DEBUG: Standard deserialization failed. Trying unsafe deserialization...");
+                log.warn("Standard deserialization failed. Trying unsafe deserialization...");
                 try {
                     session = (Session) event.getDataObjectDeserializer().deserializeUnsafe();
                 } catch (Exception e) {
-                    System.err.println("ERROR: Unsafe deserialization also failed: " + e.getMessage());
+                    log.error("Unsafe deserialization also failed: {}", e.getMessage());
                 }
             }
 
             if (session == null) {
-                System.err.println("ERROR: Session object is null. Deserialization failed?");
+                log.error("Session object is null. Deserialization failed?");
                 // Try to print raw json if possible, but we don't have it easily here without
                 // parsing payload manually.
                 // But we can check if event data object is present.
-                System.err.println("DEBUG: Event data object present? "
-                        + event.getDataObjectDeserializer().getObject().isPresent());
+                log.debug("Event data object present? {}",
+                        event.getDataObjectDeserializer().getObject().isPresent());
             } else {
-                System.out.println("DEBUG: Session ID: " + session.getId());
-                System.out.println("DEBUG: Client Reference ID: " + session.getClientReferenceId());
-                System.out.println("DEBUG: Metadata: " + session.getMetadata());
+                log.debug("Session ID: {}", session.getId());
+                log.debug("Client Reference ID: {}", session.getClientReferenceId());
+                log.debug("Metadata: {}", session.getMetadata());
 
                 if (session.getClientReferenceId() != null) {
                     Long userId = Long.parseLong(session.getClientReferenceId());
                     int creditsToAdd = Integer.parseInt(session.getMetadata().get("credits"));
 
-                    System.out
-                            .println("DEBUG: Processing payment for user " + userId + ". Credits to add: "
-                                    + creditsToAdd);
+                    log.info("Processing payment for user {}. Credits to add: {}", userId, creditsToAdd);
 
                     User user = userRepository.findById(userId)
                             .orElseThrow(() -> new RuntimeException("User not found: " + userId));
@@ -136,13 +133,13 @@ public class PaymentService {
                     user.setCredits(user.getCredits() + creditsToAdd);
                     userRepository.save(user);
 
-                    System.out.println("DEBUG: Successfully added " + creditsToAdd + " credits to user " + userId);
+                    log.info("Successfully added {} credits to user {}", creditsToAdd, userId);
                 } else {
-                    System.err.println("ERROR: clientReferenceId is null in session object.");
+                    log.error("clientReferenceId is null in session object.");
                 }
             }
         } else {
-            System.out.println("DEBUG: Ignoring event type: " + event.getType());
+            log.debug("Ignoring event type: {}", event.getType());
         }
     }
 }
