@@ -42,23 +42,18 @@ const RegisterPage = () => {
                 email,
                 password,
             });
-            const token = res.data.token;
-            if (token) {
-                // El backend devuelve id, name, email en la respuesta
-                const user = {
-                    id: res.data.id,
-                    name: res.data.name,
-                    email: res.data.email,
-                    credits: 0,
-                    freeTrialsRemaining: res.data.freeTrialsRemaining ?? 3,
-                    freeAnalysisUsed: false,
-                    emailVerified: false
-                };
-                login(token, user);
-            } else {
-                // Fallback si no viene token, aunque el backend ya lo manda
-                navigate("/login");
-            }
+            // El backend devuelve id, name, email en la respuesta
+            // El token va en cookie HttpOnly, así que pasamos string vacío al contexto
+            const user = {
+                id: res.data.id,
+                name: res.data.name,
+                email: res.data.email,
+                credits: 0,
+                freeTrialsRemaining: res.data.freeTrialsRemaining ?? 3,
+                freeAnalysisUsed: false,
+                emailVerified: false
+            };
+            login("", user, false);
         } catch (err) {
             // El interceptor de axios ya extrae el mensaje del backend
             if (err instanceof Error) {
