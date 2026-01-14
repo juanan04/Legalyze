@@ -19,8 +19,9 @@ public class ContractAnalysis {
 
     // Cuando tegas seguridad/JWT real, aquí iría @ManyToOne User
     // De momento podemos dejarlo null o añadir luego
-    // @ManyToOne(fetch = FetchType.LAZY)
-    // private User user;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 
     @Column(nullable = false)
     private String originalFileName;

@@ -53,7 +53,7 @@ const AccordionCard: React.FC<AccordionCardProps> = ({
             </button>
 
             {isOpen && children && (
-                <p
+                <div
                     className={
                         colorVariant === "danger"
                             ? "mt-4 text-sm text-red-200 pl-11"
@@ -61,7 +61,7 @@ const AccordionCard: React.FC<AccordionCardProps> = ({
                     }
                 >
                     {children}
-                </p>
+                </div>
             )}
         </div>
     );

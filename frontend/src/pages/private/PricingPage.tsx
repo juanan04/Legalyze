@@ -92,7 +92,7 @@ const PricingPage = () => {
                                 className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${pack.recommended
                                     ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-blue-600/30"
                                     : "bg-slate-800 hover:bg-slate-700 text-white border border-slate-600"
-                                    } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                                    } ${isLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                             >
                                 {isLoading === pack.id ? (
                                     "Procesando..."

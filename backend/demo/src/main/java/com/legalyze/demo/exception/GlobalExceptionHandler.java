@@ -18,6 +18,31 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("Credenciales incorrectas", "AUTH_ERROR"));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(ex.getMessage(), "BAD_REQUEST"));
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ErrorResponse> handleRuntime(RuntimeException ex) {
+        if ("INSUFFICIENT_CREDITS".equals(ex.getMessage())) {
+            return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                    .body(new ErrorResponse("No tienes créditos suficientes", "INSUFFICIENT_CREDITS"));
+        }
+        if ("GONE".equals(ex.getMessage())) {
+            return ResponseEntity.status(HttpStatus.GONE)
+                    .body(new ErrorResponse("El contrato ha expirado y ha sido eliminado", "CONTRACT_EXPIRED"));
+        }
+        if ("User is suspended".equals(ex.getMessage())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("Tu cuenta está suspendida", "USER_SUSPENDED"));
+        }
+        ex.printStackTrace();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse("Ha ocurrido un error inesperado: " + ex.getMessage(), "INTERNAL_ERROR"));
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException ex) {
         if ("NO_CREDITS".equals(ex.getMessage())) {
@@ -41,6 +66,17 @@ public class GlobalExceptionHandler {
         }
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse("Error de integridad de datos", "DATA_INTEGRITY"));
+    }
+
+    @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationExceptions(
+            org.springframework.web.bind.MethodArgumentNotValidException ex) {
+        String errorMessage = ex.getBindingResult().getAllErrors().stream()
+                .findFirst()
+                .map(error -> error.getDefaultMessage())
+                .orElse("Error de validación");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(errorMessage, "VALIDATION_ERROR"));
     }
 
     @ExceptionHandler(Exception.class)

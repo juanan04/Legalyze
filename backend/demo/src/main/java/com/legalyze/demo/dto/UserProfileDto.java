@@ -12,6 +12,7 @@ public class UserProfileDto {
     private String profileImage;
     private LocalDateTime createdAt;
     private Integer credits;
-    private Boolean freeAnalysisUsed;
+    private Integer freeTrialsRemaining;
+    private Boolean freeAnalysisUsed; // Deprecated, kept for compatibility if needed
     private Boolean emailVerified;
 }

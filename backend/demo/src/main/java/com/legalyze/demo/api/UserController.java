@@ -40,4 +40,10 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @org.springframework.web.bind.annotation.DeleteMapping("/me")
+    public ResponseEntity<Void> deleteAccount() {
+        userService.deleteAccount();
+        return ResponseEntity.noContent().build();
+    }
+
 }

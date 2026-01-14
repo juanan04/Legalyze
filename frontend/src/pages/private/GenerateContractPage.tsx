@@ -1,282 +1,221 @@
-import { useState, type FC, type KeyboardEvent } from "react";
+import { useState, type FC } from "react";
 import { useNavigate } from "react-router-dom";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../lib/api";
-import { Lock } from "lucide-react";
+import { Lock, ChevronRight, ChevronLeft, Check, AlertCircle, FileText, Edit2, Plus, Trash2 } from "lucide-react";
 import {
-    type ContractData,
-    type ContractType,
-    CONTRACT_TYPES,
-    DEFAULT_CLAUSES,
-    type Party,
-    type RentalLauData,
-    type RentalRoomData,
-    type VehicleSaleData,
-    type ServiceAgreementData
-} from "../../types/contract";
+    ContractFormSchema,
+    type ContractFormValues,
+    type ContractCategory,
+    type ContractSubtype,
+    CATEGORY_LABELS,
+    SUBTYPE_LABELS,
+    CATEGORY_SUBTYPES,
+    PARTY_LABELS,
+    DEFAULT_CLAUSES
+} from "../../schemas/ContractFormSchema";
 
-type Step = "info" | "clauses" | "preview";
+// Mapping new subtypes to backend template codes (legacy support)
+const TEMPLATE_CODE_MAPPING: Record<string, string> = {
+    RENTAL_HOUSING: "RENTAL_LAU",
+    RENTAL_ROOM: "RENTAL_ROOM",
+    SALE_VEHICLE: "VEHICLE_SALE",
+    SERVICE_PROFESSIONAL: "SERVICE_AGREEMENT",
+    SERVICE_SPOT: "SERVICE_AGREEMENT",
+};
+
+type Step = "config" | "data" | "preview";
 
 interface GeneratedContractResponse {
     id: number;
     templateCode: string;
     createdAt: string;
     generatedText: string;
+    generatedHtml: string;
     downloadUrl: string;
 }
 
 const GenerateContractPage: FC = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
-    const [step, setStep] = useState<Step>("info");
+    const [step, setStep] = useState<Step>("config");
     const [isLoading, setIsLoading] = useState(false);
     const [generatedContract, setGeneratedContract] = useState<GeneratedContractResponse | null>(null);
-    const [error, setError] = useState<string | null>(null);
-    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-
-    // Party Modal State
+    const [apiError, setApiError] = useState<string | null>(null);
     const [showPartyModal, setShowPartyModal] = useState(false);
-    const [selectedRole, setSelectedRole] = useState("");
 
-    // Initial state helper
-    const getInitialState = (type: ContractType): ContractData => {
-        const base = {
-            contractType: type,
+    const {
+        register,
+        control,
+        watch,
+        setValue,
+        getValues,
+        trigger,
+        formState: { errors }
+    } = useForm<ContractFormValues>({
+        resolver: zodResolver(ContractFormSchema),
+        defaultValues: {
             place: "Sevilla",
             date: new Date().toISOString().split('T')[0],
-            parties: [
-                { id: crypto.randomUUID(), role: getRoleName(type, 0), name: "", identification: "", isRemovable: false },
-                { id: crypto.randomUUID(), role: getRoleName(type, 1), name: "", identification: "", isRemovable: false }
-            ],
-            clauses: DEFAULT_CLAUSES[type],
-            customClauses: []
-        };
+            selectedClauses: [],
+            customClauses: [],
+            clauseDescriptions: {},
+            parties: []
+        },
+        mode: "onChange"
+    });
 
-        switch (type) {
-            case "RENTAL_LAU":
-                return { ...base, contractType: "RENTAL_LAU", propertyAddress: "", propertyDescription: "", durationMonths: 12, monthlyRent: 0, depositAmount: 0 };
-            case "RENTAL_ROOM":
-                return { ...base, contractType: "RENTAL_ROOM", propertyAddress: "", roomDescription: "", commonAreas: "", durationMonths: 6, monthlyRent: 0, depositAmount: 0 };
-            case "VEHICLE_SALE":
-                return { ...base, contractType: "VEHICLE_SALE", vehicleMake: "", vehicleModel: "", vehiclePlate: "", vehicleVin: "", price: 0 };
-            case "SERVICE_AGREEMENT":
-                return { ...base, contractType: "SERVICE_AGREEMENT", serviceDescription: "", price: 0, paymentTerms: "" };
-            default:
-                return base as unknown as ContractData;
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: "parties"
+    });
+
+    const { fields: customClausesFields, append: appendCustomClause, remove: removeCustomClause } = useFieldArray({
+        control,
+        name: "customClauses"
+    });
+
+    const selectedCategory = watch("category");
+    const selectedSubtype = watch("subtype");
+    const selectedClauses = watch("selectedClauses");
+
+    // --- Handlers ---
+
+    const handleCategorySelect = (category: ContractCategory) => {
+        setValue("category", category);
+        setValue("subtype", null as any);
+    };
+
+    const handleSubtypeSelect = (subtype: ContractSubtype) => {
+        setValue("subtype", subtype);
+
+        // Set default clauses
+        const category = getValues("category");
+        if (category && DEFAULT_CLAUSES[category]) {
+            setValue("selectedClauses", DEFAULT_CLAUSES[category]);
+        }
+
+        // Initialize default parties (One A, One B) - Not removable
+        if (category && PARTY_LABELS[category]) {
+            setValue("parties", [
+                { type: "PARTY_A", role: PARTY_LABELS[category].partyA, name: "", identification: "", isRemovable: false },
+                { type: "PARTY_B", role: PARTY_LABELS[category].partyB, name: "", identification: "", isRemovable: false }
+            ]);
         }
     };
 
-    const getRoleName = (type: ContractType, index: number): string => {
-        switch (type) {
-            case "RENTAL_LAU":
-            case "RENTAL_ROOM":
-                return index === 0 ? "Arrendador" : "Arrendatario";
-            case "VEHICLE_SALE":
-                return index === 0 ? "Vendedor" : "Comprador";
-            case "SERVICE_AGREEMENT":
-                return index === 0 ? "Prestador" : "Cliente";
-            default:
-                return "Parte " + (index + 1);
-        }
-    };
+    const handleAddParty = (type: "PARTY_A" | "PARTY_B" | "GUARANTOR") => {
+        const category = getValues("category");
+        let roleLabel = "";
 
-    const getAvailableRoles = (type: ContractType): string[] => {
-        switch (type) {
-            case "RENTAL_LAU":
-            case "RENTAL_ROOM":
-                return ["Arrendador", "Arrendatario", "Avalista"];
-            case "VEHICLE_SALE":
-                return ["Vendedor", "Comprador", "Avalista"];
-            case "SERVICE_AGREEMENT":
-                return ["Prestador", "Cliente", "Avalista"];
-            default:
-                return ["Parte", "Avalista"];
-        }
-    };
+        if (type === "PARTY_A") roleLabel = PARTY_LABELS[category].partyA;
+        else if (type === "PARTY_B") roleLabel = PARTY_LABELS[category].partyB;
+        else roleLabel = "Avalista";
 
-    const [formData, setFormData] = useState<ContractData>(getInitialState("RENTAL_LAU"));
-    const [customClauseInput, setCustomClauseInput] = useState("");
-
-    const handleTypeChange = (newType: ContractType) => {
-        setFormData(getInitialState(newType));
-        setStep("info"); // Reset step
-        setFormErrors({});
-    };
-
-    const handleInputChange = (field: string, value: any) => {
-        setFormData((prev) => ({ ...prev, [field]: value }));
-        // Clear error for this field if it exists
-        if (formErrors[field as string]) {
-            setFormErrors((prev) => {
-                const newErrors = { ...prev };
-                delete newErrors[field as string];
-                return newErrors;
-            });
-        }
-    };
-
-    const handlePartyChange = (id: string, field: keyof Party, value: string) => {
-        setFormData((prev) => ({
-            ...prev,
-            parties: prev.parties.map((p) => (p.id === id ? { ...p, [field]: value } : p)),
-        }));
-
-        // Clear error for this party field
-        const errorKey = `party_${id}_${field === 'identification' ? 'id' : 'name'}`;
-        if (formErrors[errorKey]) {
-            setFormErrors((prev) => {
-                const newErrors = { ...prev };
-                delete newErrors[errorKey];
-                return newErrors;
-            });
-        }
-    };
-
-    const openAddPartyModal = () => {
-        const roles = getAvailableRoles(formData.contractType);
-        setSelectedRole(roles[0]); // Default to first role
-        setShowPartyModal(true);
-    };
-
-    const confirmAddParty = () => {
-        setFormData((prev) => ({
-            ...prev,
-            parties: [
-                ...prev.parties,
-                { id: crypto.randomUUID(), role: selectedRole, name: "", identification: "", isRemovable: true }
-            ]
-        }));
+        append({ type, role: roleLabel, name: "", identification: "", isRemovable: true });
         setShowPartyModal(false);
     };
 
-    const removeParty = (id: string) => {
-        setFormData((prev) => ({
-            ...prev,
-            parties: prev.parties.filter((p) => p.id !== id || !p.isRemovable)
-        }));
+    const getPlural = (word: string) => {
+        const lastChar = word.slice(-1).toLowerCase();
+        if (['a', 'e', 'i', 'o', 'u'].includes(lastChar)) {
+            return word + 's';
+        }
+        return word + 'es';
     };
 
-    const handleClauseToggle = (clause: string) => {
-        setFormData((prev) => {
-            const newClauses = prev.clauses.includes(clause)
-                ? prev.clauses.filter((c) => c !== clause)
-                : [...prev.clauses, clause];
-            return { ...prev, clauses: newClauses };
-        });
-    };
-
-    const handleCustomClauseKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            const trimmed = customClauseInput.trim();
-            if (trimmed) {
-                setFormData((prev) => ({
-                    ...prev,
-                    customClauses: [...prev.customClauses, trimmed]
-                }));
-                setCustomClauseInput("");
-            }
+    const handleNextToData = () => {
+        if (selectedCategory && selectedSubtype) {
+            setStep("data");
         }
     };
 
-    const validateInfoStep = () => {
-        const errors: Record<string, string> = {};
-
-        // Validate Parties
-        formData.parties.forEach((party) => {
-            if (!party.name.trim()) errors[`party_${party.id}_name`] = "El nombre es obligatorio";
-            if (!party.identification.trim()) errors[`party_${party.id}_id`] = "El documento es obligatorio";
-        });
-
-        // Validate Specific Fields
-        if (formData.contractType === "RENTAL_LAU") {
-            const data = formData as RentalLauData;
-            if (!data.propertyAddress.trim()) errors.propertyAddress = "La dirección es obligatoria";
-            if (data.monthlyRent <= 0) errors.monthlyRent = "La renta debe ser mayor a 0";
-        } else if (formData.contractType === "RENTAL_ROOM") {
-            const data = formData as RentalRoomData;
-            if (!data.propertyAddress.trim()) errors.propertyAddress = "La dirección es obligatoria";
-            if (!data.roomDescription.trim()) errors.roomDescription = "La descripción de la habitación es obligatoria";
-            if (data.monthlyRent <= 0) errors.monthlyRent = "La renta debe ser mayor a 0";
-        } else if (formData.contractType === "VEHICLE_SALE") {
-            const data = formData as VehicleSaleData;
-            if (!data.vehicleMake.trim()) errors.vehicleMake = "La marca es obligatoria";
-            if (!data.vehicleModel.trim()) errors.vehicleModel = "El modelo es obligatorio";
-            if (!data.vehiclePlate.trim()) errors.vehiclePlate = "La matrícula es obligatoria";
-            if (data.price <= 0) errors.price = "El precio debe ser mayor a 0";
-        } else if (formData.contractType === "SERVICE_AGREEMENT") {
-            const data = formData as ServiceAgreementData;
-            if (!data.serviceDescription.trim()) errors.serviceDescription = "La descripción del servicio es obligatoria";
-            if (data.price <= 0) errors.price = "El precio debe ser mayor a 0";
-        }
-
-        setFormErrors(errors);
-        return Object.keys(errors).length === 0;
-    };
-
-    const handleNext = () => {
-        if (step === "info") {
-            if (validateInfoStep()) {
-                setStep("clauses");
-            }
-        } else if (step === "clauses") {
+    const handleNextToPreview = async () => {
+        const result = await trigger();
+        if (result) {
             setStep("preview");
         }
     };
 
-    const handleGenerate = async () => {
+    const handleAiGenerate = async () => {
         setIsLoading(true);
-        setError(null);
+        setApiError(null);
+        const data = getValues();
+
         try {
-            // Construct fields based on contract type
+            const templateCode = TEMPLATE_CODE_MAPPING[data.subtype] || data.subtype;
+
             const fields: Record<string, any> = {
-                place: formData.place,
-                date: formData.date,
-                contractType: formData.contractType,
-                clauses: [...formData.clauses, ...formData.customClauses].join("\n"),
+                place: data.place,
+                date: data.date,
+                contractType: data.subtype,
+                propertyAddress: data.propertyAddress,
+                monthlyRent: data.monthlyRent,
+                depositAmount: data.depositAmount,
+                roomDescription: data.roomDescription,
+                vehicleMake: data.vehicleMake,
+                vehicleModel: data.vehicleModel,
+                vehiclePlate: data.vehiclePlate,
+                price: data.price,
+                serviceDescription: data.serviceDescription,
+                paymentTerms: data.paymentTerms,
+                loanAmount: data.loanAmount,
+                returnDate: data.returnDate,
             };
 
-            // Add parties
-            fields.parties = formData.parties.map(p => `${p.role}: ${p.name} (${p.identification})`).join("\n");
+            // Format parties string
+            const partiesA = data.parties.filter(p => p.type === "PARTY_A");
+            const partiesB = data.parties.filter(p => p.type === "PARTY_B");
+            const guarantors = data.parties.filter(p => p.type === "GUARANTOR");
 
-            // Add specific fields
-            if (formData.contractType === "RENTAL_LAU") {
-                const data = formData as RentalLauData;
-                fields.propertyAddress = data.propertyAddress;
-                fields.monthlyRent = data.monthlyRent;
-                fields.depositAmount = data.depositAmount;
-            } else if (formData.contractType === "RENTAL_ROOM") {
-                const data = formData as RentalRoomData;
-                fields.propertyAddress = data.propertyAddress;
-                fields.roomDescription = data.roomDescription;
-                fields.monthlyRent = data.monthlyRent;
-            } else if (formData.contractType === "VEHICLE_SALE") {
-                const data = formData as VehicleSaleData;
-                fields.vehicleMake = data.vehicleMake;
-                fields.vehicleModel = data.vehicleModel;
-                fields.vehiclePlate = data.vehiclePlate;
-                fields.price = data.price;
-            } else if (formData.contractType === "SERVICE_AGREEMENT") {
-                const data = formData as ServiceAgreementData;
-                fields.serviceDescription = data.serviceDescription;
-                fields.price = data.price;
-                fields.paymentTerms = data.paymentTerms;
+            let partiesStr = "";
+            partiesA.forEach(p => partiesStr += `${p.role}: ${p.name} (${p.identification})\n`);
+            partiesB.forEach(p => partiesStr += `${p.role}: ${p.name} (${p.identification})\n`);
+            if (guarantors.length > 0) {
+                partiesStr += "\nAvalistas:\n";
+                guarantors.forEach(p => partiesStr += `${p.role}: ${p.name} (${p.identification})\n`);
             }
 
+            fields.parties = partiesStr.trim();
+
+            const clauses = data.selectedClauses.map(key => ({
+                key,
+                enabled: true,
+                description: data.clauseDescriptions?.[key] || null
+            }));
+
+            // Format custom clauses as strings "Title: Description"
+            const formattedCustomClauses = data.customClauses.map(c => `${c.title}: ${c.description}`);
+
             const payload = {
-                templateCode: formData.contractType,
-                fields: fields,
+                templateCode,
+                fields,
+                tone: "NEUTRAL",
+                clauses,
+                customClauses: formattedCustomClauses
             };
 
-            const response = await api.post("/api/generated-contracts/generate", payload);
+            const response = await api.post("/api/generated-contracts/ai", payload);
             setGeneratedContract(response.data);
-        } catch (err) {
+
+            localStorage.setItem("legalyze:lastAiGenerated", JSON.stringify({
+                ...response.data,
+                createdAt: new Date().toISOString()
+            }));
+
+        } catch (err: any) {
             console.error(err);
-            if (err instanceof Error) {
-                setError(err.message);
+            if (err.response?.data?.code === "NO_CREDITS" || err.response?.status === 403) {
+                setApiError("No tienes créditos suficientes.");
+            } else if (err.response?.data?.message) {
+                setApiError(err.response.data.message);
+            } else if (err instanceof Error) {
+                setApiError(err.message);
             } else {
-                setError("Error al generar el contrato. Por favor intenta de nuevo.");
+                setApiError("Error al generar el contrato. Por favor, inténtalo de nuevo.");
             }
         } finally {
             setIsLoading(false);
@@ -286,645 +225,534 @@ const GenerateContractPage: FC = () => {
     const handleDownload = async () => {
         if (!generatedContract) return;
         try {
-            const response = await api.get(generatedContract.downloadUrl, {
-                responseType: 'blob',
-            });
-
+            const response = await api.get(generatedContract.downloadUrl, { responseType: 'blob' });
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `contrato-${generatedContract.id}.txt`);
+            link.setAttribute('download', `contrato-${generatedContract.id}.docx`);
             document.body.appendChild(link);
             link.click();
             link.remove();
         } catch (err) {
-            console.error("Error downloading file", err);
-            setError("Error al descargar el archivo.");
+            setApiError("Error al descargar el archivo.");
         }
+    };
+
+    // --- Render Steps ---
+
+    const renderConfigStep = () => (
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="text-center space-y-2">
+                <h2 className="text-2xl font-bold text-white">¿Qué tipo de contrato necesitas?</h2>
+                <p className="text-slate-400">Selecciona la categoría y el subtipo para comenzar.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {Object.keys(CATEGORY_LABELS).map((cat) => (
+                    <button
+                        key={cat}
+                        onClick={() => handleCategorySelect(cat as ContractCategory)}
+                        className={`p-6 rounded-xl border transition-all text-left space-y-2
+                            ${selectedCategory === cat
+                                ? "border-blue-500 bg-blue-500/10 ring-1 ring-blue-500"
+                                : "border-slate-700 bg-slate-800/50 hover:bg-slate-800 hover:border-slate-600"
+                            }`}
+                    >
+                        <div className="font-semibold text-lg text-white">{CATEGORY_LABELS[cat as ContractCategory]}</div>
+                    </button>
+                ))}
+            </div>
+
+            {selectedCategory && (
+                <div className="space-y-4 animate-in fade-in duration-300">
+                    <h3 className="text-lg font-medium text-slate-300">Selecciona una opción:</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        {CATEGORY_SUBTYPES[selectedCategory].map((sub) => (
+                            <button
+                                key={sub}
+                                onClick={() => handleSubtypeSelect(sub)}
+                                className={`p-4 rounded-lg border transition-all text-left
+                                    ${selectedSubtype === sub
+                                        ? "border-blue-500 bg-blue-500/10 text-white"
+                                        : "border-slate-700 bg-slate-900/50 text-slate-400 hover:text-white hover:border-slate-600"
+                                    }`}
+                            >
+                                {SUBTYPE_LABELS[sub]}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <div className="flex justify-end pt-8">
+                <button
+                    onClick={handleNextToData}
+                    disabled={!selectedCategory || !selectedSubtype}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                >
+                    Continuar <ChevronRight className="w-4 h-4" />
+                </button>
+            </div>
+        </div>
+    );
+
+    const renderPartyCard = (field: any, index: number) => (
+        <div key={field.id} className="p-4 bg-slate-900/50 border border-slate-700 rounded-xl space-y-4 relative group">
+            <div className="flex justify-between items-start">
+                <h4 className="text-sm font-semibold text-blue-400">{field.role}</h4>
+                {field.isRemovable && (
+                    <button
+                        type="button"
+                        onClick={() => remove(index)}
+                        className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                )}
+            </div>
+            <div className="space-y-2">
+                <label className="text-xs text-slate-400">Nombre completo / Razón Social</label>
+                <input
+                    {...register(`parties.${index}.name`)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-1 focus:ring-blue-500 outline-none"
+                />
+                {errors.parties?.[index]?.name && <p className="text-red-400 text-xs">{errors.parties[index]?.name?.message}</p>}
+            </div>
+            <div className="space-y-2">
+                <label className="text-xs text-slate-400">DNI / NIF</label>
+                <input
+                    {...register(`parties.${index}.identification`)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-1 focus:ring-blue-500 outline-none"
+                />
+                {errors.parties?.[index]?.identification && <p className="text-red-400 text-xs">{errors.parties[index]?.identification?.message}</p>}
+            </div>
+            {/* Hidden fields for type and role */}
+            <input type="hidden" {...register(`parties.${index}.type`)} />
+            <input type="hidden" {...register(`parties.${index}.role`)} />
+            <input type="hidden" {...register(`parties.${index}.isRemovable`)} />
+        </div>
+    );
+
+    const renderDataStep = () => {
+        const category = selectedCategory!;
+        const subtype = selectedSubtype!;
+
+        // Filter fields by type for rendering
+        const partyAFields = fields.map((f, i) => ({ ...f, index: i })).filter(f => f.type === "PARTY_A");
+        const partyBFields = fields.map((f, i) => ({ ...f, index: i })).filter(f => f.type === "PARTY_B");
+        const guarantorFields = fields.map((f, i) => ({ ...f, index: i })).filter(f => f.type === "GUARANTOR");
+
+        return (
+            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-slate-700 pb-4">
+                    <div>
+                        <h2 className="text-xl font-bold text-white">{SUBTYPE_LABELS[subtype]}</h2>
+                        <p className="text-sm text-slate-400">{CATEGORY_LABELS[category]}</p>
+                    </div>
+                    <button onClick={() => setStep("config")} className="text-sm text-blue-400 hover:underline">
+                        Cambiar tipo
+                    </button>
+                </div>
+
+                {/* Common Fields */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-300">Lugar de firma</label>
+                        <input
+                            {...register("place")}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                        {errors.place && <p className="text-red-400 text-xs">{errors.place.message}</p>}
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-300">Fecha</label>
+                        <input
+                            type="date"
+                            {...register("date")}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                        {errors.date && <p className="text-red-400 text-xs">{errors.date.message}</p>}
+                    </div>
+                </div>
+
+                {/* Parties Section */}
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-white">Intervinientes</h3>
+                        <button
+                            type="button"
+                            onClick={() => setShowPartyModal(true)}
+                            className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 font-medium"
+                        >
+                            <Plus className="w-4 h-4" /> Añadir parte
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Side A */}
+                        <div className="space-y-4">
+                            <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800 pb-2">
+                                {getPlural(PARTY_LABELS[category].partyA)}
+                            </h4>
+                            <div className="space-y-4">
+                                {partyAFields.map(field => renderPartyCard(field, field.index))}
+                            </div>
+                        </div>
+
+                        {/* Side B + Guarantors */}
+                        <div className="space-y-4">
+                            <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800 pb-2">
+                                {getPlural(PARTY_LABELS[category].partyB)}
+                            </h4>
+                            <div className="space-y-4">
+                                {partyBFields.map(field => renderPartyCard(field, field.index))}
+
+                                {guarantorFields.length > 0 && (
+                                    <div className="pl-4 border-l-2 border-slate-700 space-y-4 mt-4">
+                                        <h5 className="text-xs font-semibold text-slate-500 uppercase">Avalistas</h5>
+                                        {guarantorFields.map(field => renderPartyCard(field, field.index))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Specific Fields */}
+                <div className="space-y-4 pt-6 border-t border-slate-700">
+                    <h3 className="text-lg font-semibold text-white">Detalles del Contrato</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {category === "RENTAL" && (
+                            <>
+                                <div className="md:col-span-2 space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Dirección del inmueble</label>
+                                    <input {...register("propertyAddress")} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white outline-none focus:ring-1 focus:ring-blue-500" />
+                                    {errors.propertyAddress && <p className="text-red-400 text-xs">{errors.propertyAddress.message}</p>}
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Renta Mensual (€)</label>
+                                    <input type="number" {...register("monthlyRent", { valueAsNumber: true })} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white outline-none focus:ring-1 focus:ring-blue-500" />
+                                    {errors.monthlyRent && <p className="text-red-400 text-xs">{errors.monthlyRent.message}</p>}
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Fianza (€)</label>
+                                    <input type="number" {...register("depositAmount", { valueAsNumber: true })} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white outline-none focus:ring-1 focus:ring-blue-500" />
+                                </div>
+                            </>
+                        )}
+
+                        {subtype === "SALE_VEHICLE" && (
+                            <>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Marca</label>
+                                    <input {...register("vehicleMake")} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white outline-none focus:ring-1 focus:ring-blue-500" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Modelo</label>
+                                    <input {...register("vehicleModel")} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white outline-none focus:ring-1 focus:ring-blue-500" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Matrícula</label>
+                                    <input {...register("vehiclePlate")} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white outline-none focus:ring-1 focus:ring-blue-500" />
+                                    {errors.vehiclePlate && <p className="text-red-400 text-xs">{errors.vehiclePlate.message}</p>}
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Precio (€)</label>
+                                    <input type="number" {...register("price", { valueAsNumber: true })} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white outline-none focus:ring-1 focus:ring-blue-500" />
+                                </div>
+                            </>
+                        )}
+
+                        {category === "SERVICE" && (
+                            <>
+                                <div className="md:col-span-2 space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Descripción del Servicio</label>
+                                    <textarea rows={3} {...register("serviceDescription")} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white outline-none focus:ring-1 focus:ring-blue-500" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Precio (€)</label>
+                                    <input type="number" {...register("price", { valueAsNumber: true })} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white outline-none focus:ring-1 focus:ring-blue-500" />
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                {/* Clauses */}
+                <div className="space-y-4 pt-4 border-t border-slate-700">
+                    <h3 className="text-lg font-semibold text-white">Cláusulas</h3>
+                    <div className="space-y-3">
+                        {DEFAULT_CLAUSES[category]?.map((clause) => (
+                            <div key={clause} className="space-y-2">
+                                <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-700 bg-slate-800/50 cursor-pointer hover:border-blue-500/50 transition-colors">
+                                    <input
+                                        type="checkbox"
+                                        value={clause}
+                                        {...register("selectedClauses")}
+                                        className="mt-1 w-4 h-4 rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm text-slate-200">{clause}</span>
+                                </label>
+                                {selectedClauses?.includes(clause) && (
+                                    <div className="ml-7">
+                                        <textarea
+                                            placeholder={`Detalles adicionales para: ${clause}`}
+                                            {...register(`clauseDescriptions.${clause}`)}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300 focus:ring-1 focus:ring-blue-500 outline-none"
+                                            rows={2}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Custom Clauses */}
+                    <div className="space-y-3 pt-4 border-t border-slate-700">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold text-slate-300">Cláusulas Personalizadas</h4>
+                            <button
+                                type="button"
+                                onClick={() => appendCustomClause({ title: "", description: "" })}
+                                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                            >
+                                <Plus className="w-3 h-3" /> Añadir
+                            </button>
+                        </div>
+
+                        {customClausesFields.map((field, index) => (
+                            <div key={field.id} className="p-3 bg-slate-900/50 border border-slate-700 rounded-lg space-y-2 group">
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        placeholder="Título de la cláusula"
+                                        {...register(`customClauses.${index}.title`)}
+                                        className="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm text-white focus:ring-1 focus:ring-blue-500 outline-none"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => removeCustomClause(index)}
+                                        className="text-slate-500 hover:text-red-400"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                                <textarea
+                                    placeholder="Descripción detallada..."
+                                    {...register(`customClauses.${index}.description`)}
+                                    className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm text-slate-300 focus:ring-1 focus:ring-blue-500 outline-none"
+                                    rows={2}
+                                />
+                                {errors.customClauses?.[index]?.title && <p className="text-red-400 text-xs">{errors.customClauses[index]?.title?.message}</p>}
+                                {errors.customClauses?.[index]?.description && <p className="text-red-400 text-xs">{errors.customClauses[index]?.description?.message}</p>}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="flex justify-between pt-8">
+                    <button
+                        onClick={() => setStep("config")}
+                        className="flex items-center gap-2 text-slate-400 hover:text-white px-4 py-2"
+                    >
+                        <ChevronLeft className="w-4 h-4" /> Atrás
+                    </button>
+                    <button
+                        onClick={handleNextToPreview}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-lg shadow-blue-500/20"
+                    >
+                        Revisar Contrato <FileText className="w-4 h-4" />
+                    </button>
+                </div>
+
+                {/* Add Party Modal */}
+                {showPartyModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                        <div className="w-full max-w-sm rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl animate-in zoom-in-95 duration-200">
+                            <h3 className="text-lg font-bold text-white mb-4">Añadir Interviniente</h3>
+                            <div className="space-y-3">
+                                <button
+                                    onClick={() => handleAddParty("PARTY_A")}
+                                    className="w-full p-3 rounded-lg border border-slate-700 hover:border-blue-500 hover:bg-blue-500/10 text-left transition-all"
+                                >
+                                    <div className="font-semibold text-blue-400">{PARTY_LABELS[category].partyA}</div>
+                                    <div className="text-xs text-slate-400">Añadir otra parte de este tipo</div>
+                                </button>
+                                <button
+                                    onClick={() => handleAddParty("PARTY_B")}
+                                    className="w-full p-3 rounded-lg border border-slate-700 hover:border-purple-500 hover:bg-purple-500/10 text-left transition-all"
+                                >
+                                    <div className="font-semibold text-purple-400">{PARTY_LABELS[category].partyB}</div>
+                                    <div className="text-xs text-slate-400">Añadir otra parte de este tipo</div>
+                                </button>
+                                <button
+                                    onClick={() => handleAddParty("GUARANTOR")}
+                                    className="w-full p-3 rounded-lg border border-slate-700 hover:border-green-500 hover:bg-green-500/10 text-left transition-all"
+                                >
+                                    <div className="font-semibold text-green-400">Avalista</div>
+                                    <div className="text-xs text-slate-400">Añadir un avalista para la parte B</div>
+                                </button>
+                            </div>
+                            <button
+                                onClick={() => setShowPartyModal(false)}
+                                className="mt-6 w-full py-2 text-sm text-slate-400 hover:text-white"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderPreviewStep = () => {
+        const data = getValues();
+
+        if (generatedContract) {
+            return (
+                <div className="space-y-6 animate-in fade-in duration-500">
+                    <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-6 text-center space-y-4">
+                        <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
+                            <Check className="w-6 h-6 text-green-500" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-white">¡Contrato Generado!</h2>
+                        <p className="text-slate-400">Tu contrato ha sido generado exitosamente con IA.</p>
+                        <button
+                            onClick={handleDownload}
+                            className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-bold shadow-lg shadow-green-500/20 transition-all transform hover:scale-105 cursor-pointer"
+                        >
+                            Descargar Word
+                        </button>
+                    </div>
+
+                    <div className="bg-white text-black p-8 rounded-xl shadow-2xl overflow-auto max-h-[600px] font-serif">
+                        <div dangerouslySetInnerHTML={{ __html: generatedContract.generatedHtml }} />
+                    </div>
+
+                    <button onClick={() => setGeneratedContract(null)} className="text-slate-400 hover:text-white text-sm mx-auto block cursor-pointer">
+                        Generar otro contrato
+                    </button>
+                </div>
+            );
+        }
+
+        return (
+            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-8 space-y-6 max-w-3xl mx-auto">
+                    <div className="text-center border-b border-slate-700 pb-6">
+                        <h2 className="text-2xl font-bold text-white mb-2">Resumen del Contrato</h2>
+                        <p className="text-slate-400">{SUBTYPE_LABELS[data.subtype]} - {data.place}, {data.date}</p>
+                    </div>
+
+                    <div className="space-y-6">
+                        {data.parties.map((p, i) => (
+                            <div key={i} className="flex justify-between items-center border-b border-slate-800 pb-2 last:border-0">
+                                <div>
+                                    <h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider">{p.role}</h3>
+                                    <p className="text-white">{p.name}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-slate-400 text-sm">{p.identification}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="border-t border-slate-700 pt-6">
+                        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Detalles y Cláusulas</h3>
+                        <ul className="space-y-2 text-slate-300">
+                            {data.propertyAddress && <li><span className="text-slate-500">Inmueble:</span> {data.propertyAddress}</li>}
+                            {data.monthlyRent && <li><span className="text-slate-500">Renta:</span> {data.monthlyRent}€</li>}
+                            {data.price && <li><span className="text-slate-500">Precio:</span> {data.price}€</li>}
+
+                            <li className="pt-2 font-medium text-white">Cláusulas seleccionadas:</li>
+                            {data.selectedClauses.map(c => (
+                                <li key={c} className="flex items-start gap-2">
+                                    <Check className="w-4 h-4 text-green-500 mt-1" />
+                                    <span>{c}</span>
+                                </li>
+                            ))}
+
+                            {data.customClauses.length > 0 && (
+                                <>
+                                    <li className="pt-2 font-medium text-white">Cláusulas personalizadas:</li>
+                                    {data.customClauses.map((c, i) => (
+                                        <li key={i} className="flex items-start gap-2">
+                                            <Check className="w-4 h-4 text-blue-500 mt-1" />
+                                            <span>{c.title}</span>
+                                        </li>
+                                    ))}
+                                </>
+                            )}
+                        </ul>
+                    </div>
+                </div>
+
+                {apiError && (
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-lg flex items-center gap-3">
+                        <AlertCircle className="w-5 h-5" />
+                        {apiError}
+                    </div>
+                )}
+
+                <div className="flex justify-between max-w-3xl mx-auto">
+                    <button
+                        onClick={() => setStep("data")}
+                        className="flex items-center gap-2 text-slate-400 hover:text-white px-4 py-2"
+                    >
+                        <Edit2 className="w-4 h-4" /> Editar datos
+                    </button>
+                    <button
+                        onClick={handleAiGenerate}
+                        disabled={isLoading}
+                        className="flex items-center gap-2 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-xl shadow-blue-500/20 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                        {isLoading ? "Generando..." : "Generar Contrato Final con IA"}
+                    </button>
+                </div>
+            </div>
+        );
     };
 
     if (!user?.emailVerified) {
         return (
             <DashboardLayout>
                 <div className="relative min-h-[60vh] flex items-center justify-center">
-                    {/* Blurred Background Content */}
-                    <div className="absolute inset-0 filter blur-sm opacity-50 pointer-events-none select-none">
-                        <div className="p-8">
-                            <h1 className="text-3xl font-bold text-white mb-8">Generar Contrato</h1>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="h-32 bg-slate-800 rounded-xl"></div>
-                                <div className="h-32 bg-slate-800 rounded-xl"></div>
-                                <div className="h-32 bg-slate-800 rounded-xl"></div>
-                                <div className="h-32 bg-slate-800 rounded-xl"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Overlay Message */}
-                    <div className="relative z-10 bg-slate-900 border border-slate-700 p-8 rounded-2xl shadow-2xl max-w-md text-center">
-                        <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Lock className="w-8 h-8 text-yellow-500" />
-                        </div>
-                        <h2 className="text-xl font-bold text-white mb-2">Función Bloqueada</h2>
-                        <p className="text-slate-400 mb-6">
-                            Para generar contratos legales con IA, necesitas verificar tu correo electrónico primero.
-                        </p>
-                        <button
-                            onClick={() => navigate("/dashboard")}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
-                        >
-                            Volver al Dashboard
-                        </button>
+                    <div className="text-center space-y-4">
+                        <Lock className="w-12 h-12 text-yellow-500 mx-auto" />
+                        <h2 className="text-2xl font-bold text-white">Función Bloqueada</h2>
+                        <p className="text-slate-400">Verifica tu correo para acceder.</p>
+                        <button onClick={() => navigate("/dashboard")} className="text-blue-400 hover:underline cursor-pointer">Volver</button>
                     </div>
                 </div>
             </DashboardLayout>
         );
     }
 
-    const renderTabs = () => (
-        <div className="border-b border-slate-700 mb-8">
-            <nav aria-label="Pasos de generación" className="-mb-px flex gap-8 text-sm">
-                <div
-                    className={`border-b-2 pb-3 font-medium transition-colors cursor-default ${step === "info"
-                        ? "border-blue-500 text-blue-400"
-                        : "border-transparent text-slate-400"
-                        }`}
-                >
-                    Información
-                </div>
-                <div
-                    className={`border-b-2 pb-3 font-medium transition-colors cursor-default ${step === "clauses"
-                        ? "border-blue-500 text-blue-400"
-                        : "border-transparent text-slate-400"
-                        }`}
-                >
-                    Cláusulas
-                </div>
-                <div
-                    className={`border-b-2 pb-3 font-medium transition-colors cursor-default ${step === "preview"
-                        ? "border-blue-500 text-blue-400"
-                        : "border-transparent text-slate-400"
-                        }`}
-                >
-                    Vista previa
-                </div>
-            </nav>
-        </div>
-    );
-
-    const renderInfoStep = () => {
-        // Group parties by role
-        const groups: Record<string, Party[]> = {};
-        // Initialize groups based on available roles to ensure order
-        const availableRoles = getAvailableRoles(formData.contractType);
-        availableRoles.forEach(role => {
-            groups[role] = [];
-        });
-
-        formData.parties.forEach(party => {
-            if (!groups[party.role]) {
-                groups[party.role] = [];
-            }
-            groups[party.role].push(party);
-        });
-        const groupedParties = groups;
-
-        return (
-            <div className="space-y-10">
-                {/* Información básica */}
-                <section>
-                    <h2 className="text-xl sm:text-2xl font-bold text-slate-50 mb-6">
-                        Información básica
-                    </h2>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-xs font-medium text-slate-400 mb-2">
-                                Tipo de contrato
-                            </label>
-                            <div className="relative">
-                                <select
-                                    value={formData.contractType}
-                                    onChange={(e) => handleTypeChange(e.target.value as ContractType)}
-                                    className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                >
-                                    {CONTRACT_TYPES.map((t) => (
-                                        <option key={t.value} value={t.value}>{t.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-slate-400 mb-2">
-                                Lugar de firma
-                            </label>
-                            <input
-                                type="text"
-                                value={formData.place}
-                                onChange={(e) => handleInputChange("place", e.target.value)}
-                                className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            />
-                        </div>
-                    </div>
-                </section>
-
-                {/* Información de las partes */}
-                <section className="space-y-6">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold text-slate-50">
-                            Información de las partes
-                        </h3>
-                        <button
-                            type="button"
-                            onClick={openAddPartyModal}
-                            className="text-sm text-blue-400 hover:text-blue-300 font-medium"
-                        >
-                            + Añadir parte
-                        </button>
-                    </div>
-
-                    <div className="space-y-6">
-                        {Object.entries(groupedParties).map(([role, parties]) => (
-                            parties.length > 0 && (
-                                <div key={role} className="space-y-4">
-                                    <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800 pb-2">
-                                        {role}s
-                                    </h4>
-                                    {parties.map((party, index) => (
-                                        <div key={party.id} className="p-4 rounded-xl border border-slate-800 bg-slate-900/50 relative">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <h4 className="text-sm font-semibold text-blue-400">
-                                                    {party.role} {parties.length > 1 ? `(${index + 1})` : ""}
-                                                </h4>
-                                                {party.isRemovable && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removeParty(party.id)}
-                                                        className="text-slate-500 hover:text-red-400"
-                                                    >
-                                                        ✕
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-xs font-medium text-slate-400 mb-2">
-                                                        Nombre completo / Razón Social
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={party.name}
-                                                        onChange={(e) => handlePartyChange(party.id, "name", e.target.value)}
-                                                        className={`w-full rounded-lg border bg-slate-900/80 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-1 ${formErrors[`party_${party.id}_name`]
-                                                            ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                                                            : "border-slate-700 focus:border-blue-500 focus:ring-blue-500"
-                                                            }`}
-                                                    />
-                                                    {formErrors[`party_${party.id}_name`] && (
-                                                        <p className="mt-1 text-xs text-red-400">{formErrors[`party_${party.id}_name`]}</p>
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-medium text-slate-400 mb-2">
-                                                        Documento (DNI/NIE/CIF)
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={party.identification}
-                                                        onChange={(e) => handlePartyChange(party.id, "identification", e.target.value)}
-                                                        className={`w-full rounded-lg border bg-slate-900/80 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-1 ${formErrors[`party_${party.id}_id`]
-                                                            ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                                                            : "border-slate-700 focus:border-blue-500 focus:ring-blue-500"
-                                                            }`}
-                                                    />
-                                                    {formErrors[`party_${party.id}_id`] && (
-                                                        <p className="mt-1 text-xs text-red-400">{formErrors[`party_${party.id}_id`]}</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )
-                        ))}
-                    </div>
-                </section>
-
-                {/* Detalles específicos del contrato */}
-                <section>
-                    <h3 className="text-lg font-semibold text-slate-50 mb-4">
-                        Detalles del contrato
-                    </h3>
-                    <div className="grid grid-cols-1 gap-6">
-                        {formData.contractType === "RENTAL_LAU" && (
-                            <>
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-400 mb-2">Dirección del inmueble</label>
-                                    <input
-                                        type="text"
-                                        value={(formData as RentalLauData).propertyAddress}
-                                        onChange={(e) => handleInputChange("propertyAddress", e.target.value)}
-                                        className={`w-full rounded-lg border bg-slate-900/80 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-1 ${formErrors.propertyAddress ? "border-red-500" : "border-slate-700 focus:border-blue-500"}`}
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-400 mb-2">Renta mensual (€)</label>
-                                        <input
-                                            type="number"
-                                            value={(formData as RentalLauData).monthlyRent}
-                                            onChange={(e) => handleInputChange("monthlyRent", parseFloat(e.target.value))}
-                                            className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 focus:border-blue-500"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-400 mb-2">Fianza (€)</label>
-                                        <input
-                                            type="number"
-                                            value={(formData as RentalLauData).depositAmount}
-                                            onChange={(e) => handleInputChange("depositAmount", parseFloat(e.target.value))}
-                                            className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 focus:border-blue-500"
-                                        />
-                                    </div>
-                                </div>
-                            </>
-                        )}
-
-                        {formData.contractType === "RENTAL_ROOM" && (
-                            <>
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-400 mb-2">Dirección del inmueble</label>
-                                    <input
-                                        type="text"
-                                        value={(formData as RentalRoomData).propertyAddress}
-                                        onChange={(e) => handleInputChange("propertyAddress", e.target.value)}
-                                        className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 focus:border-blue-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-400 mb-2">Descripción de la habitación</label>
-                                    <input
-                                        type="text"
-                                        value={(formData as RentalRoomData).roomDescription}
-                                        onChange={(e) => handleInputChange("roomDescription", e.target.value)}
-                                        placeholder="Ej: Habitación exterior con baño propio"
-                                        className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 focus:border-blue-500"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-400 mb-2">Renta mensual (€)</label>
-                                        <input
-                                            type="number"
-                                            value={(formData as RentalRoomData).monthlyRent}
-                                            onChange={(e) => handleInputChange("monthlyRent", parseFloat(e.target.value))}
-                                            className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 focus:border-blue-500"
-                                        />
-                                    </div>
-                                </div>
-                            </>
-                        )}
-
-                        {formData.contractType === "VEHICLE_SALE" && (
-                            <>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-400 mb-2">Marca</label>
-                                        <input
-                                            type="text"
-                                            value={(formData as VehicleSaleData).vehicleMake}
-                                            onChange={(e) => handleInputChange("vehicleMake", e.target.value)}
-                                            className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 focus:border-blue-500"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-400 mb-2">Modelo</label>
-                                        <input
-                                            type="text"
-                                            value={(formData as VehicleSaleData).vehicleModel}
-                                            onChange={(e) => handleInputChange("vehicleModel", e.target.value)}
-                                            className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 focus:border-blue-500"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-400 mb-2">Matrícula</label>
-                                        <input
-                                            type="text"
-                                            value={(formData as VehicleSaleData).vehiclePlate}
-                                            onChange={(e) => handleInputChange("vehiclePlate", e.target.value)}
-                                            className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 focus:border-blue-500"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-400 mb-2">Precio (€)</label>
-                                        <input
-                                            type="number"
-                                            value={(formData as VehicleSaleData).price}
-                                            onChange={(e) => handleInputChange("price", parseFloat(e.target.value))}
-                                            className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 focus:border-blue-500"
-                                        />
-                                    </div>
-                                </div>
-                            </>
-                        )}
-
-                        {formData.contractType === "SERVICE_AGREEMENT" && (
-                            <>
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-400 mb-2">Descripción del servicio</label>
-                                    <textarea
-                                        rows={3}
-                                        value={(formData as ServiceAgreementData).serviceDescription}
-                                        onChange={(e) => handleInputChange("serviceDescription", e.target.value)}
-                                        className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 focus:border-blue-500"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-400 mb-2">Precio total (€)</label>
-                                        <input
-                                            type="number"
-                                            value={(formData as ServiceAgreementData).price}
-                                            onChange={(e) => handleInputChange("price", parseFloat(e.target.value))}
-                                            className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 focus:border-blue-500"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-400 mb-2">Condiciones de pago</label>
-                                        <input
-                                            type="text"
-                                            value={(formData as ServiceAgreementData).paymentTerms}
-                                            onChange={(e) => handleInputChange("paymentTerms", e.target.value)}
-                                            placeholder="Ej: 50% al inicio, 50% al final"
-                                            className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 focus:border-blue-500"
-                                        />
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </section>
-
-                {/* Add Party Modal */}
-                {showPartyModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                        <div className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl">
-                            <h3 className="text-lg font-bold text-slate-50 mb-4">
-                                Añadir nueva parte
-                            </h3>
-                            <div className="mb-6">
-                                <label className="block text-xs font-medium text-slate-400 mb-2">
-                                    Rol de la parte
-                                </label>
-                                <select
-                                    value={selectedRole}
-                                    onChange={(e) => setSelectedRole(e.target.value)}
-                                    className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                >
-                                    {getAvailableRoles(formData.contractType).map((role) => (
-                                        <option key={role} value={role}>
-                                            {role}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="flex justify-end gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPartyModal(false)}
-                                    className="rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={confirmAddParty}
-                                    className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600"
-                                >
-                                    Añadir
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    const renderClausesStep = () => {
-        const defaultClauses = DEFAULT_CLAUSES[formData.contractType] || [];
-
-        return (
-            <div className="space-y-8">
-                <section>
-                    <h2 className="text-xl sm:text-2xl font-bold text-slate-50 mb-3">
-                        Cláusulas del contrato
-                    </h2>
-                    <p className="text-sm text-slate-400 max-w-2xl">
-                        Selecciona las cláusulas que quieres incluir y personaliza su
-                        contenido. Más adelante conectaremos esto con la IA para generar el
-                        texto completo automáticamente.
-                    </p>
-                </section>
-
-                <section className="space-y-4">
-                    {defaultClauses.map((label) => (
-                        <label
-                            key={label}
-                            className="flex items-start gap-3 rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-100 hover:border-blue-500/60 transition-colors cursor-pointer"
-                        >
-                            <input
-                                type="checkbox"
-                                checked={formData.clauses.includes(label)}
-                                onChange={() => handleClauseToggle(label)}
-                                className="mt-1 h-4 w-4 rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-blue-500"
-                            />
-                            <div>
-                                <div className="font-semibold">{label}</div>
-                            </div>
-                        </label>
-                    ))}
-                </section>
-
-                <section className="space-y-3">
-                    <h3 className="text-sm font-semibold text-slate-50">
-                        Cláusulas personalizadas
-                    </h3>
-                    <p className="text-xs text-slate-400">
-                        Añade cualquier cláusula adicional que quieras incluir en el contrato. Presiona Enter para añadirla a la lista.
-                    </p>
-                    <div className="space-y-2">
-                        {formData.customClauses.map((clause, index) => (
-                            <div key={index} className="flex justify-between items-center p-3 rounded-lg border border-slate-700 bg-slate-900/50 text-sm text-slate-300">
-                                <span>{clause}</span>
-                                <button
-                                    onClick={() => {
-                                        const newCustomClauses = formData.customClauses.filter((_, i) => i !== index);
-                                        setFormData(prev => ({ ...prev, customClauses: newCustomClauses }));
-                                    }}
-                                    className="text-slate-500 hover:text-red-400"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                    <textarea
-                        rows={3}
-                        value={customClauseInput}
-                        onChange={(e) => setCustomClauseInput(e.target.value)}
-                        onKeyDown={handleCustomClauseKeyDown}
-                        placeholder="Escribe tu cláusula y presiona Enter para añadirla..."
-                        className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                </section>
-            </div>
-        );
-    };
-
-    const renderPreviewStep = () => (
-        <div className="space-y-8">
-            <section>
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-50 mb-3">
-                    Vista previa del contrato
-                </h2>
-                <p className="text-sm text-slate-400 max-w-2xl">
-                    Esta es una vista previa estática basada en los datos introducidos.
-                    La IA generará el documento final basándose en esta estructura.
-                </p>
-            </section>
-
-            {generatedContract ? (
-                <section className="rounded-xl border border-slate-700 bg-slate-900/80 p-6 text-sm leading-relaxed text-slate-100 shadow-lg shadow-black/20 whitespace-pre-wrap">
-                    {generatedContract.generatedText}
-                </section>
-            ) : (
-                <section className="rounded-xl border border-slate-700 bg-slate-900/80 p-6 text-sm leading-relaxed text-slate-100 shadow-lg shadow-black/20">
-                    <h3 className="text-lg font-semibold mb-4">
-                        {CONTRACT_TYPES.find(t => t.value === formData.contractType)?.label}
-                    </h3>
-
-                    <p className="mb-3 text-xs text-slate-400">
-                        Lugar y fecha: {formData.place}, a {new Date(formData.date).toLocaleDateString()}.
-                    </p>
-
-                    <div className="mb-4 space-y-2">
-                        <p className="font-semibold">PARTES:</p>
-                        <ul className="list-disc ml-5 space-y-1 text-slate-300">
-                            {formData.parties.map((party, index) => (
-                                <li key={index}>
-                                    <span className="font-medium">{party.role}:</span> {party.name} ({party.identification})
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    <p className="mt-4 mb-2 font-semibold">CLÁUSULAS SELECCIONADAS</p>
-                    <ul className="list-disc ml-5 space-y-2 text-slate-300">
-                        {formData.clauses.map((clause, index) => (
-                            <li key={`default-${index}`}>{clause}</li>
-                        ))}
-                        {formData.customClauses.map((clause, index) => (
-                            <li key={`custom-${index}`}>{clause} (Personalizada)</li>
-                        ))}
-                    </ul>
-
-                    <p className="mt-6 text-xs text-slate-500 italic">
-                        * Este es un resumen de los datos. El contrato final será generado por IA con redacción legal profesional.
-                    </p>
-                </section>
-            )}
-        </div>
-    );
-
-    const renderFooter = () => (
-        <div className="mt-10 pt-6 border-t border-slate-800 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-            <div className="text-xs text-slate-500">
-                Paso{" "}
-                {step === "info" ? "1 de 3 · Información" : step === "clauses" ? "2 de 3 · Cláusulas" : "3 de 3 · Vista previa"}
-            </div>
-            <div className="flex gap-3 justify-end">
-                {step !== "info" && (
-                    <button
-                        type="button"
-                        onClick={() => {
-                            if (step === "clauses") setStep("info");
-                            if (step === "preview") setStep("clauses");
-                            setGeneratedContract(null); // Reset generated contract if going back
-                        }}
-                        className="rounded-lg border border-slate-600 bg-slate-900/70 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-slate-800"
-                    >
-                        Volver
-                    </button>
-                )}
-
-                {step !== "preview" && (
-                    <button
-                        type="button"
-                        onClick={handleNext}
-                        className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600"
-                    >
-                        {step === "info" ? "Siguiente: Cláusulas" : "Siguiente: Vista previa"}
-                    </button>
-                )}
-
-                {step === "preview" && !generatedContract && (
-                    <button
-                        type="button"
-                        onClick={handleGenerate}
-                        disabled={isLoading}
-                        className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600 disabled:opacity-50"
-                    >
-                        {isLoading ? "Generando..." : "Generar contrato"}
-                    </button>
-                )}
-
-                {step === "preview" && generatedContract && (
-                    <button
-                        type="button"
-                        onClick={handleDownload}
-                        className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
-                    >
-                        Descargar
-                    </button>
-                )}
-            </div>
-            {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
-        </div>
-    );
-
     return (
         <DashboardLayout>
-            <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-                {/* Header */}
-                <header className="mb-8 flex items-center gap-3">
-                    <button
-                        type="button"
-                        onClick={() => navigate("/dashboard")}
-                        className="p-2 rounded-full hover:bg-slate-800 text-slate-400 transition-colors"
-                    >
-                        ←
-                    </button>
-                    <div>
-                        <h1 className="text-2xl sm:text-3xl font-bold text-slate-50">
-                            Generar contrato
-                        </h1>
-                        <p className="mt-1 text-sm text-slate-400">
-                            Completa los datos básicos, elige las cláusulas y revisa la vista
-                            previa antes de generar el documento.
-                        </p>
+            <div className="max-w-5xl mx-auto px-4 py-8">
+                {/* Progress Bar */}
+                <div className="flex items-center justify-between mb-12 relative">
+                    <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-slate-800 -z-10" />
+                    <div className={`flex items-center gap-2 ${step === "config" ? "text-blue-400" : "text-slate-500"}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${step === "config" ? "bg-blue-500 text-white" : "bg-slate-800"}`}>1</div>
+                        <span className="hidden sm:inline font-medium">Configuración</span>
                     </div>
-                </header>
+                    <div className={`flex items-center gap-2 ${step === "data" ? "text-blue-400" : "text-slate-500"}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${step === "data" ? "bg-blue-500 text-white" : "bg-slate-800"}`}>2</div>
+                        <span className="hidden sm:inline font-medium">Datos</span>
+                    </div>
+                    <div className={`flex items-center gap-2 ${step === "preview" ? "text-blue-400" : "text-slate-500"}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${step === "preview" ? "bg-blue-500 text-white" : "bg-slate-800"}`}>3</div>
+                        <span className="hidden sm:inline font-medium">Revisión</span>
+                    </div>
+                </div>
 
-                {renderTabs()}
-
-                {step === "info" && renderInfoStep()}
-                {step === "clauses" && renderClausesStep()}
+                {step === "config" && renderConfigStep()}
+                {step === "data" && renderDataStep()}
                 {step === "preview" && renderPreviewStep()}
-
-                {renderFooter()}
             </div>
         </DashboardLayout>
     );

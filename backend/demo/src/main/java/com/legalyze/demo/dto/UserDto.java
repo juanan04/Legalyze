@@ -9,6 +9,7 @@ public class UserDto {
     private String email;
     private String profileImage;
     private Integer credits;
-    private Boolean freeAnalysisUsed;
+    private Integer freeTrialsRemaining;
+    private Boolean freeAnalysisUsed; // Deprecated
     private Boolean emailVerified;
 }

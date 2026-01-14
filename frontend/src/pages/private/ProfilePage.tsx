@@ -6,8 +6,10 @@ import {
     ChevronRight,
     Camera,
     Save,
-    X
+    X,
+    AlertTriangle
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { api } from "../../lib/api";
 
 const ProfilePage = () => {
@@ -28,6 +30,10 @@ const ProfilePage = () => {
     });
     const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+    // Delete Account state
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Fallback por si no hay usuario (aunque debería haber si es ruta protegida)
     if (!user) return null;
@@ -114,21 +120,29 @@ const ProfilePage = () => {
 
             setPasswordMessage({ type: 'success', text: 'Contraseña actualizada correctamente' });
             setPasswordData({ oldPassword: "", newPassword: "", confirmPassword: "" });
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error changing password:", error);
-            if (error && typeof error === 'object' && 'response' in error) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const axiosError = error as any;
-                if (axiosError.response?.status === 400 || axiosError.response?.status === 401) {
-                    setPasswordMessage({ type: 'error', text: 'La contraseña actual es incorrecta' });
-                } else {
-                    setPasswordMessage({ type: 'error', text: 'Error al actualizar la contraseña' });
-                }
+            if (error.response?.data?.message === "Old password is incorrect" || error.response?.status === 400 || error.response?.status === 401) {
+                setPasswordMessage({ type: 'error', text: 'La contraseña actual es incorrecta' });
+            } else if (error.response?.data?.message) {
+                setPasswordMessage({ type: 'error', text: error.response.data.message });
             } else {
                 setPasswordMessage({ type: 'error', text: 'Error al actualizar la contraseña' });
             }
         } finally {
             setIsChangingPassword(false);
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        try {
+            setIsDeleting(true);
+            await api.delete("/api/users/me");
+            logout();
+        } catch (error) {
+            console.error("Error deleting account:", error);
+            setIsDeleting(false);
+            // Could add error notification here
         }
     };
 
@@ -141,7 +155,7 @@ const ProfilePage = () => {
                     <button
                         type="button"
                         onClick={isEditing ? handleSave : handleEditToggle}
-                        className={`${isEditing ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-[#2563EB] hover:bg-[#1D4ED8]'} text-white text-sm font-semibold py-2 px-5 rounded-lg transition-colors flex items-center gap-2`}
+                        className={`${isEditing ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-[#2563EB] hover:bg-[#1D4ED8]'} text-white text-sm font-semibold py-2 px-5 rounded-lg transition-colors flex items-center gap-2 cursor-pointer`}
                     >
                         {isEditing ? (
                             <>
@@ -159,7 +173,7 @@ const ProfilePage = () => {
                         <button
                             type="button"
                             onClick={handleEditToggle}
-                            className="ml-2 bg-slate-700 text-white text-sm font-semibold py-2 px-3 rounded-lg hover:bg-slate-600 transition-colors"
+                            className="ml-2 bg-slate-700 text-white text-sm font-semibold py-2 px-3 rounded-lg hover:bg-slate-600 transition-colors cursor-pointer"
                         >
                             <X className="w-4 h-4" />
                         </button>
@@ -241,10 +255,9 @@ const ProfilePage = () => {
                                 {isEditing ? (
                                     <input
                                         type="email"
-                                        name="email"
                                         value={formData.email}
-                                        onChange={handleInputChange}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        disabled
+                                        className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 text-slate-500 cursor-not-allowed"
                                     />
                                 ) : (
                                     <p className="text-sm text-slate-100">{displayUser.email}</p>
@@ -254,7 +267,7 @@ const ProfilePage = () => {
                     </section>
 
                     {/* Plan actual */}
-                    <section>
+                    {/* <section>
                         <h3 className="text-xl font-semibold mb-4 text-white">Mi plan</h3>
                         <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                             <div>
@@ -272,7 +285,7 @@ const ProfilePage = () => {
                                 Gestionar plan
                             </button>
                         </div>
-                    </section>
+                    </section> */}
 
                     {/* Legal y soporte */}
                     <section>
@@ -282,31 +295,31 @@ const ProfilePage = () => {
                         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden">
                             <ul className="divide-y divide-slate-800">
                                 <li>
-                                    <button
-                                        type="button"
-                                        className="w-full flex justify-between items-center px-4 py-3 text-sm hover:bg-slate-800/70 transition-colors"
+                                    <Link
+                                        to="/terms"
+                                        className="w-full flex justify-between items-center px-4 py-3 text-sm hover:bg-slate-800/70 transition-colors text-slate-300 hover:text-white"
                                     >
                                         <span>Términos de servicio</span>
                                         <ChevronRight className="w-4 h-4 text-slate-500" />
-                                    </button>
+                                    </Link>
                                 </li>
                                 <li>
-                                    <button
-                                        type="button"
-                                        className="w-full flex justify-between items-center px-4 py-3 text-sm hover:bg-slate-800/70 transition-colors"
+                                    <Link
+                                        to="/privacy"
+                                        className="w-full flex justify-between items-center px-4 py-3 text-sm hover:bg-slate-800/70 transition-colors text-slate-300 hover:text-white"
                                     >
                                         <span>Política de privacidad</span>
                                         <ChevronRight className="w-4 h-4 text-slate-500" />
-                                    </button>
+                                    </Link>
                                 </li>
                                 <li>
-                                    <button
-                                        type="button"
-                                        className="w-full flex justify-between items-center px-4 py-3 text-sm hover:bg-slate-800/70 transition-colors"
+                                    <Link
+                                        to="/disclaimer" // Assuming help/support goes here or mailto
+                                        className="w-full flex justify-between items-center px-4 py-3 text-sm hover:bg-slate-800/70 transition-colors text-slate-300 hover:text-white"
                                     >
                                         <span>Ayuda y soporte</span>
                                         <ChevronRight className="w-4 h-4 text-slate-500" />
-                                    </button>
+                                    </Link>
                                 </li>
                             </ul>
                         </div>
@@ -371,7 +384,7 @@ const ProfilePage = () => {
                                         <button
                                             type="submit"
                                             disabled={isChangingPassword}
-                                            className="bg-slate-700 text-white text-sm font-semibold py-2 px-4 rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50"
+                                            className="bg-slate-700 text-white text-sm font-semibold py-2 px-4 rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50 cursor-pointer"
                                         >
                                             {isChangingPassword ? 'Actualizando...' : 'Actualizar contraseña'}
                                         </button>
@@ -379,18 +392,62 @@ const ProfilePage = () => {
                                 </form>
                             </div>
 
-                            <button
-                                type="button"
-                                onClick={logout}
-                                className="w-full sm:w-auto text-red-500 font-semibold py-2 px-5 rounded-lg hover:bg-red-500/10 transition-colors"
-                            >
-                                Cerrar sesión
-                            </button>
+                            <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-slate-800">
+                                <button
+                                    type="button"
+                                    onClick={logout}
+                                    className="text-slate-400 font-semibold py-2 px-5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                                >
+                                    Cerrar sesión
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsDeleteModalOpen(true)}
+                                    className="text-red-500 font-semibold py-2 px-5 rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer"
+                                >
+                                    Eliminar cuenta
+                                </button>
+                            </div>
                         </div>
                     </section>
                 </div>
+
+                {/* Delete Account Modal */}
+                {isDeleteModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+                            <div className="flex flex-col items-center text-center mb-6">
+                                <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
+                                    <AlertTriangle className="w-6 h-6 text-red-500" />
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-2">
+                                    ¿Eliminar cuenta permanentemente?
+                                </h3>
+                                <p className="text-slate-400 text-sm">
+                                    Esta acción no se puede deshacer. Se eliminarán todos tus datos, historial de contratos y créditos restantes.
+                                </p>
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setIsDeleteModalOpen(false)}
+                                    className="flex-1 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-slate-800 transition-colors cursor-pointer"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleDeleteAccount}
+                                    disabled={isDeleting}
+                                    className="flex-1 py-2.5 rounded-xl font-medium text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 cursor-pointer"
+                                >
+                                    {isDeleting ? "Eliminando..." : "Sí, eliminar"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
-        </DashboardLayout>
+
+        </DashboardLayout >
     );
 };
 

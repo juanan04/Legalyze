@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Eye, EyeOff } from "lucide-react";
@@ -17,8 +17,14 @@ const RegisterPage = () => {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
-    const { login } = useAuth();
+    const { login, isAuthenticated } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            navigate("/dashboard", { replace: true });
+        }
+    }, [isAuthenticated, navigate]);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -44,6 +50,7 @@ const RegisterPage = () => {
                     name: res.data.name,
                     email: res.data.email,
                     credits: 0,
+                    freeTrialsRemaining: res.data.freeTrialsRemaining ?? 3,
                     freeAnalysisUsed: false,
                     emailVerified: false
                 };
@@ -53,17 +60,11 @@ const RegisterPage = () => {
                 navigate("/login");
             }
         } catch (err) {
-            if (err && typeof err === 'object' && 'response' in err) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const axiosError = err as any;
-                setError(
-                    axiosError.response?.data?.message ??
-                    "No se pudo completar el registro. Inténtalo de nuevo más tarde."
-                );
-            } else if (err instanceof Error) {
+            // El interceptor de axios ya extrae el mensaje del backend
+            if (err instanceof Error) {
                 setError(err.message);
             } else {
-                setError("Ocurrió un error inesperado");
+                setError("Ocurrió un error inesperado al registrarse.");
             }
             setLoading(false);
         }

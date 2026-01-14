@@ -1,34 +1,41 @@
 import type { FormEvent } from "react";
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { api } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 
-
-
 const LoginPage = () => {
-    const { login } = useAuth();
+    const { login, isAuthenticated } = useAuth();
+    const navigate = useNavigate();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            navigate("/dashboard", { replace: true });
+        }
+    }, [isAuthenticated, navigate]);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setError(null);
 
         try {
-            const res = await api.post("/api/auth/login", { email, password });
+            const res = await api.post("/api/auth/login", { email, password, rememberMe });
 
             const token: string = res.data.token;
             const user = res.data.user;
-            login(token, user);
+            login(token, user, rememberMe);
         } catch (err) {
+            // El interceptor de axios ya extrae el mensaje del backend
             if (err instanceof Error) {
                 setError(err.message);
             } else {
-                setError("Credenciales inválidas o error del servidor");
+                setError("Ocurrió un error inesperado. Por favor, inténtalo de nuevo.");
             }
         }
     };
@@ -110,6 +117,21 @@ const LoginPage = () => {
                                 )}
                             </button>
                         </div>
+                    </div>
+
+                    {/* Remember Me */}
+                    <div className="flex items-center">
+                        <input
+                            id="remember-me"
+                            name="remember-me"
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-gray-300 text-[#3b82f6] focus:ring-[#3b82f6] bg-[#020617] border-[#1f2937]"
+                            checked={rememberMe}
+                            onChange={(e) => setRememberMe(e.target.checked)}
+                        />
+                        <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-300">
+                            Recordar usuario
+                        </label>
                     </div>
 
                     {/* Botón */}

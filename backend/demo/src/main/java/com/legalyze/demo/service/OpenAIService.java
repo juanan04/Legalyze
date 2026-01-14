@@ -86,7 +86,8 @@ public class OpenAIService implements AIService {
             {
               "title": "Título del riesgo (ej: Penalización abusiva)",
               "description": "Por qué es un riesgo para el firmante.",
-              "severity": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+              "severity": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+              "quote": "El fragmento de texto exacto del contrato que justifica este riesgo"
             }
           ]
         }

@@ -52,7 +52,7 @@ const PaymentStatusPage = () => {
                             </p>
                             <button
                                 onClick={() => navigate("/dashboard")}
-                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors"
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors cursor-pointer"
                             >
                                 Ir al Dashboard
                             </button>
@@ -69,13 +69,13 @@ const PaymentStatusPage = () => {
                             <div className="flex gap-4">
                                 <button
                                     onClick={() => navigate("/pricing")}
-                                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors"
+                                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors cursor-pointer"
                                 >
                                     Intentar de nuevo
                                 </button>
                                 <button
                                     onClick={() => navigate("/dashboard")}
-                                    className="flex-1 border border-slate-700 text-slate-300 hover:bg-slate-800 font-semibold py-3 px-6 rounded-xl transition-colors"
+                                    className="flex-1 border border-slate-700 text-slate-300 hover:bg-slate-800 font-semibold py-3 px-6 rounded-xl transition-colors cursor-pointer"
                                 >
                                     Dashboard
                                 </button>

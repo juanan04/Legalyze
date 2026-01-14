@@ -10,5 +10,6 @@ public class RegisterResponse {
     private String name;
     private String email;
     private String token;
+    private Integer freeTrialsRemaining;
     private LocalDateTime createdAt;
 }

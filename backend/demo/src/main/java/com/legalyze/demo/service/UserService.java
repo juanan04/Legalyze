@@ -49,6 +49,7 @@ public class UserService implements UserDetailsService {
         dto.setProfileImage(u.getProfileImage());
         dto.setCreatedAt(u.getCreatedAt());
         dto.setCredits(u.getCredits());
+        dto.setFreeTrialsRemaining(u.getFreeTrialsRemaining());
         dto.setFreeAnalysisUsed(u.getFreeAnalysisUsed());
         dto.setEmailVerified(u.getEmailVerified());
         return dto;
@@ -97,8 +98,12 @@ public class UserService implements UserDetailsService {
         validateUserAccess();
         User u = getCurrentUser();
 
-        if (!u.getFreeAnalysisUsed()) {
-            u.setFreeAnalysisUsed(true);
+        if (u.getFreeTrialsRemaining() > 0) {
+            u.setFreeTrialsRemaining(u.getFreeTrialsRemaining() - 1);
+            // Sync legacy field just in case
+            if (u.getFreeTrialsRemaining() == 0) {
+                u.setFreeAnalysisUsed(true);
+            }
         } else {
             if (u.getCredits() > 0) {
                 u.setCredits(u.getCredits() - 1);
@@ -106,6 +111,12 @@ public class UserService implements UserDetailsService {
                 throw new IllegalStateException("NO_CREDITS");
             }
         }
+        userRepository.save(u);
+    }
+
+    public void deleteAccount() {
+        User u = getCurrentUser();
+        u.setIsSuspended(true);
         userRepository.save(u);
     }
 

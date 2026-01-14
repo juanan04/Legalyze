@@ -1,9 +1,10 @@
 package com.legalyze.demo.service;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import org.springframework.stereotype.Service;
 
@@ -26,6 +27,16 @@ public class GeneratedContractService {
 
     public GenerateContractResponse generate(GenerateContractRequest request) {
         userService.validateUserAccess();
+        com.legalyze.demo.model.User currentUser = userService.getCurrentUser();
+
+        // Enforce history limit (max 30)
+        long count = generatedContractRepository.countByUser(currentUser);
+        if (count >= 30) {
+            GeneratedContract oldest = generatedContractRepository.findFirstByUserOrderByCreatedAtAsc(currentUser);
+            if (oldest != null) {
+                generatedContractRepository.delete(oldest);
+            }
+        }
 
         // Nombre de plantilla dummy. Más adelante lo leeremos de ContractTemplate.
         String templateName = "Plantilla " + request.getTemplateCode();
@@ -41,7 +52,9 @@ public class GeneratedContractService {
                 .createdAt(LocalDateTime.now())
                 .filledDataJson(filledDataJson)
                 .generatedText(generatedText)
+                .generatedText(generatedText)
                 .pdfPath(null) // lo rellenaremos cuando generemos el PDF de verdad
+                .user(currentUser)
                 .build();
 
         gc = generatedContractRepository.save(gc);
@@ -55,9 +68,9 @@ public class GeneratedContractService {
         return resp;
     }
 
-    public List<GeneratedContractListItemDto> listAll() {
-        return generatedContractRepository.findAllByOrderByCreatedAtDesc()
-                .stream()
+    public Page<GeneratedContractListItemDto> listAll(Pageable pageable) {
+        com.legalyze.demo.model.User currentUser = userService.getCurrentUser();
+        return generatedContractRepository.findAllByUserOrderByCreatedAtDesc(currentUser, pageable)
                 .map(gc -> {
                     GeneratedContractListItemDto dto = new GeneratedContractListItemDto();
                     dto.setId(gc.getId());
@@ -65,13 +78,17 @@ public class GeneratedContractService {
                     dto.setTemplateName(gc.getTemplateName());
                     dto.setCreatedAt(gc.getCreatedAt());
                     return dto;
-                })
-                .collect(Collectors.toList());
+                });
     }
 
     public GenerateContractResponse getById(Long id) {
+        com.legalyze.demo.model.User currentUser = userService.getCurrentUser();
         GeneratedContract gc = generatedContractRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Generated contract not found with id " + id));
+
+        if (gc.getUser() != null && !gc.getUser().getId().equals(currentUser.getId())) {
+            throw new IllegalArgumentException("Access denied");
+        }
 
         GenerateContractResponse resp = new GenerateContractResponse();
         resp.setId(gc.getId());

@@ -15,6 +15,7 @@ export interface BaseContractData {
     date: string; // ISO date or string
     parties: Party[];
     clauses: string[];
+    clauseDescriptions: Record<string, string>;
     customClauses: string[];
 }
 

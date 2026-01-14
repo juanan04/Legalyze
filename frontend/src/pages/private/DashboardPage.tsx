@@ -40,6 +40,33 @@ const DashboardPage = () => {
     const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    // Resend Email State
+    const [resendCooldown, setResendCooldown] = useState(0);
+    const [isResending, setIsResending] = useState(false);
+
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (resendCooldown > 0) {
+            interval = setInterval(() => {
+                setResendCooldown((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [resendCooldown]);
+
+    const handleResendEmail = async () => {
+        if (!user?.email) return;
+        try {
+            setIsResending(true);
+            await api.post("/api/auth/resend-verification", { email: user.email });
+            setResendCooldown(90); // 1 minute 30 seconds
+        } catch (error) {
+            console.error("Error resending email:", error);
+        } finally {
+            setIsResending(false);
+        }
+    };
+
     useEffect(() => {
         const fetchActivity = async () => {
             setIsLoading(true);
@@ -113,9 +140,9 @@ const DashboardPage = () => {
                         className="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors"
                         onClick={() => navigate("/pricing")}
                     >
-                        {!user?.freeAnalysisUsed ? (
+                        {(user?.freeTrialsRemaining ?? 0) > 0 ? (
                             <span className="text-emerald-400 font-medium text-sm">
-                                ✨ Prueba Gratuita Disponible
+                                ✨ {user?.freeTrialsRemaining} Prueba{user?.freeTrialsRemaining !== 1 ? 's' : ''} Gratuita{user?.freeTrialsRemaining !== 1 ? 's' : ''} Disponible{user?.freeTrialsRemaining !== 1 ? 's' : ''}
                             </span>
                         ) : (
                             <span className="text-blue-400 font-medium text-sm">
@@ -159,8 +186,21 @@ const DashboardPage = () => {
                             Revisa tu bandeja de entrada (y spam).
                             <br />
                             <span className="text-xs opacity-80 mt-1 block">
-                                ¿Ya has verificado? Prueba a <button onClick={() => { localStorage.removeItem("auth_token"); localStorage.removeItem("auth_user"); window.location.href = "/login"; }} className="underline hover:text-white">cerrar sesión</button> e iniciar de nuevo.
+                                ¿Ya has verificado? Prueba a <button onClick={() => { localStorage.removeItem("auth_token"); localStorage.removeItem("auth_user"); window.location.href = "/login"; }} className="underline hover:text-white cursor-pointer">cerrar sesión</button> e iniciar de nuevo.
                             </span>
+                            <div className="mt-3">
+                                <button
+                                    onClick={handleResendEmail}
+                                    disabled={resendCooldown > 0 || isResending}
+                                    className="text-xs bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-500 border border-yellow-500/50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                >
+                                    {resendCooldown > 0
+                                        ? `Reenviar en ${Math.floor(resendCooldown / 60)}:${(resendCooldown % 60).toString().padStart(2, '0')}`
+                                        : isResending
+                                            ? "Enviando..."
+                                            : "Reenviar correo de verificación"}
+                                </button>
+                            </div>
                         </p>
                     </div>
                 </div>
@@ -230,7 +270,7 @@ const DashboardPage = () => {
                                 </div>
                                 <button
                                     onClick={() => navigate("/history")}
-                                    className="text-sm text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap"
+                                    className="text-sm text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap cursor-pointer"
                                 >
                                     Ver en historial →
                                 </button>

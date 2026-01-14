@@ -37,7 +37,13 @@ public class AuthService {
         }
 
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email already exists");
+            // Check if suspended
+            User existing = userRepository.findByEmail(request.getEmail()).get();
+            if (Boolean.TRUE.equals(existing.getIsSuspended())) {
+                throw new IllegalArgumentException(
+                        "Esta cuenta ha sido suspendida/eliminada. No se puede volver a registrar con este correo.");
+            }
+            throw new IllegalArgumentException("El correo electrónico ya está registrado.");
         }
 
         String verificationToken = java.util.UUID.randomUUID().toString();
@@ -50,6 +56,7 @@ public class AuthService {
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(UserRole.USER)
                 .credits(0)
+                .freeTrialsRemaining(3)
                 .freeAnalysisUsed(false)
                 .emailVerified(false)
                 .verificationToken(verificationToken)
@@ -73,19 +80,26 @@ public class AuthService {
         resp.setName(user.getName());
         resp.setEmail(user.getEmail());
         resp.setToken(token);
+        resp.setFreeTrialsRemaining(user.getFreeTrialsRemaining());
         resp.setCreatedAt(user.getCreatedAt());
         return resp;
     }
 
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
+                .orElseThrow(() -> new IllegalArgumentException("Correo electrónico o contraseña incorrectos."));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new IllegalArgumentException("Invalid credentials");
+        if (Boolean.TRUE.equals(user.getIsSuspended())) {
+            throw new IllegalArgumentException(
+                    "Tu cuenta ha sido eliminada. Contacta con soporte si crees que es un error.");
         }
 
-        String token = jwtService.generateToken(user);
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("Correo electrónico o contraseña incorrectos.");
+        }
+
+        long expiration = request.isRememberMe() ? 2505600000L : 18000000L; // 29 days vs 5 hours
+        String token = jwtService.generateToken(user, expiration);
 
         UserDto userDto = new UserDto();
         userDto.setId(user.getId());
@@ -93,6 +107,7 @@ public class AuthService {
         userDto.setEmail(user.getEmail());
         userDto.setProfileImage(user.getProfileImage());
         userDto.setCredits(user.getCredits());
+        userDto.setFreeTrialsRemaining(user.getFreeTrialsRemaining());
         userDto.setFreeAnalysisUsed(user.getFreeAnalysisUsed());
         userDto.setEmailVerified(user.getEmailVerified());
 
@@ -131,5 +146,25 @@ public class AuthService {
         user.setVerificationTokenExpiry(null);
         userRepository.save(user);
         System.out.println("DEBUG: User verified and saved.");
+    }
+
+    public void resendVerificationEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new IllegalArgumentException("Email already verified");
+        }
+
+        // Reuse existing token if valid, otherwise generate new one
+        String token = user.getVerificationToken();
+        if (token == null || user.getVerificationTokenExpiry().isBefore(java.time.LocalDateTime.now())) {
+            token = java.util.UUID.randomUUID().toString();
+            user.setVerificationToken(token);
+            user.setVerificationTokenExpiry(java.time.LocalDateTime.now().plusHours(24));
+            userRepository.save(user);
+        }
+
+        emailService.sendVerificationEmail(user.getEmail(), token);
     }
 }

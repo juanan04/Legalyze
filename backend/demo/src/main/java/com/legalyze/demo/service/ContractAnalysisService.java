@@ -2,7 +2,9 @@ package com.legalyze.demo.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -15,10 +17,6 @@ import com.legalyze.demo.model.AnalysisStatus;
 import com.legalyze.demo.model.ContractAnalysis;
 import com.legalyze.demo.model.User;
 import com.legalyze.demo.repository.ContractAnalysisRepository;
-import com.legalyze.demo.service.UserService;
-import com.legalyze.demo.service.DocumentService;
-import com.legalyze.demo.service.AIService;
-import com.legalyze.demo.service.AIServiceFactory;
 
 import lombok.RequiredArgsConstructor;
 
@@ -43,6 +41,15 @@ public class ContractAnalysisService {
 
         userService.consumeAnalysisCredit();
 
+        // Enforce history limit (max 30)
+        long count = contractAnalysisRepository.countByUser(user);
+        if (count >= 30) {
+            ContractAnalysis oldest = contractAnalysisRepository.findFirstByUserOrderByUploadedAtAsc(user);
+            if (oldest != null) {
+                contractAnalysisRepository.delete(oldest);
+            }
+        }
+
         // 0.1 Validate File Type
         String contentType = file.getContentType();
         if (contentType == null || (!contentType.equals("application/pdf")
@@ -66,7 +73,9 @@ public class ContractAnalysisService {
                     .summary(aiResponse.getSummary())
                     .keyClausesJson(objectMapper.writeValueAsString(aiResponse.getKeyClauses()))
                     .risksJson(objectMapper.writeValueAsString(aiResponse.getRisks()))
+                    .risksJson(objectMapper.writeValueAsString(aiResponse.getRisks()))
                     .llmModelUsed("gpt-4o-mini") // TODO: Update this based on provider
+                    .user(user)
                     .build();
 
             analysis = contractAnalysisRepository.save(analysis);
@@ -88,9 +97,9 @@ public class ContractAnalysisService {
         return documentService.generatePreview(file);
     }
 
-    public List<ContractAnalysisListItemDto> listAll() {
-        return contractAnalysisRepository.findAllByOrderByUploadedAtDesc()
-                .stream()
+    public Page<ContractAnalysisListItemDto> listAll(Pageable pageable) {
+        User currentUser = userService.getCurrentUser();
+        return contractAnalysisRepository.findAllByUserOrderByUploadedAtDesc(currentUser, pageable)
                 .map(a -> {
                     ContractAnalysisListItemDto dto = new ContractAnalysisListItemDto();
                     dto.setId(a.getId());
@@ -99,13 +108,17 @@ public class ContractAnalysisService {
                     dto.setStatus(a.getStatus().name());
                     dto.setSummary(a.getSummary());
                     return dto;
-                })
-                .collect(Collectors.toList());
+                });
     }
 
     public ContractAnalysisResponse getById(Long id) {
+        User currentUser = userService.getCurrentUser();
         ContractAnalysis a = contractAnalysisRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Analysis not found: " + id));
+
+        if (a.getUser() != null && !a.getUser().getId().equals(currentUser.getId())) {
+            throw new IllegalArgumentException("Access denied");
+        }
 
         ContractAnalysisResponse resp = new ContractAnalysisResponse();
         resp.setId(a.getId());

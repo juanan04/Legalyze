@@ -1,8 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import logo from '../../assets/logo.png';
+import { useAuth } from '../../context/AuthContext';
 
 const PublicNavbar: React.FC = () => {
+    const { isAuthenticated } = useAuth();
+
     return (
         <nav className="w-full p-6 flex justify-between items-center z-10 relative">
             <Link to="/" className="flex items-center gap-2 group">
@@ -11,19 +14,31 @@ const PublicNavbar: React.FC = () => {
             </Link>
 
             <div className="flex items-center gap-4">
-                <Link
-                    to="/login"
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-slate-600 text-slate-300 hover:text-white transition-all duration-200 backdrop-blur-sm text-sm font-medium group"
-                >
-                    <span className="opacity-70 group-hover:opacity-100">🔐</span>
-                    <span className="hidden sm:inline">Iniciar Sesión</span>
-                </Link>
-                <Link
-                    to="/register"
-                    className="hidden sm:flex items-center gap-2 px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-all duration-200 text-sm font-bold shadow-lg shadow-blue-600/20"
-                >
-                    Registrarse
-                </Link>
+                {isAuthenticated ? (
+                    <Link
+                        to="/dashboard"
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-all duration-200 text-sm font-bold shadow-lg shadow-blue-600/20 group"
+                    >
+                        <span>🚀</span>
+                        <span>Ir al Dashboard</span>
+                    </Link>
+                ) : (
+                    <>
+                        <Link
+                            to="/login"
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-slate-600 text-slate-300 hover:text-white transition-all duration-200 backdrop-blur-sm text-sm font-medium group"
+                        >
+                            <span className="opacity-70 group-hover:opacity-100">🔐</span>
+                            <span className="hidden sm:inline">Iniciar Sesión</span>
+                        </Link>
+                        <Link
+                            to="/register"
+                            className="hidden sm:flex items-center gap-2 px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-all duration-200 text-sm font-bold shadow-lg shadow-blue-600/20"
+                        >
+                            Registrarse
+                        </Link>
+                    </>
+                )}
             </div>
         </nav>
     );

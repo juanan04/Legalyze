@@ -19,6 +19,10 @@ public class GeneratedContract {
 
     // Por ahora guardamos solo el código de plantilla
     // Más adelante puedes añadir @ManyToOne ContractTemplate y/o User.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
     @Column(nullable = false)
     private String templateCode;
 
@@ -33,8 +37,14 @@ public class GeneratedContract {
     private String filledDataJson;
 
     @Lob
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "LONGTEXT")
     private String generatedText;
+
+    @Lob
+    @Column(columnDefinition = "LONGTEXT")
+    private String generatedHtml;
+
+    private LocalDateTime expiresAt;
 
     private String pdfPath;
 

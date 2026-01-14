@@ -43,12 +43,24 @@ public class User implements UserDetails {
     @Column(nullable = false, length = 20)
     private UserRole role;
 
+    @Builder.Default
     @Column(nullable = false)
     private Integer credits = 0;
 
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean isSuspended = false;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Integer freeTrialsRemaining = 3;
+
+    @Deprecated
+    @Builder.Default
     @Column(nullable = false)
     private Boolean freeAnalysisUsed = false;
 
+    @Builder.Default
     @Column(nullable = false)
     private Boolean emailVerified = false;
 
