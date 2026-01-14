@@ -9,6 +9,7 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
+import { api } from "../lib/api";
 
 export type User = {
     id: number;
@@ -22,7 +23,6 @@ export type User = {
 };
 
 type AuthContextValue = {
-    token: string | null;
     user: User | null;
     isAuthenticated: boolean;
     login: (token: string, user: User, rememberMe: boolean) => void;
@@ -33,7 +33,7 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    const [token, setToken] = useState<string | null>(() => localStorage.getItem("auth_token"));
+    // Token is now managed via HttpOnly cookie
     const [user, setUser] = useState<User | null>(() => {
         const storedUser = localStorage.getItem("auth_user");
         return storedUser ? JSON.parse(storedUser) : null;
@@ -48,22 +48,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const navigate = useNavigate();
 
-    const login = useCallback((jwt: string, userData: User, remember: boolean) => {
-        setToken(jwt);
+    const login = useCallback((_jwt: string, userData: User, remember: boolean) => {
         setUser(userData);
         setRememberMe(remember);
-        localStorage.setItem("auth_token", jwt);
         localStorage.setItem("auth_user", JSON.stringify(userData));
         localStorage.setItem("auth_remember_me", String(remember));
         navigate("/dashboard", { replace: true });
     }, [navigate]);
 
-    const logout = useCallback(() => {
-        setToken(null);
+    const logout = useCallback(async () => {
+        try {
+            await api.post("/api/auth/logout");
+        } catch (error) {
+            console.error("Logout failed", error);
+        }
+
         setUser(null);
         setRememberMe(false);
         setShowInactivityModal(false);
-        localStorage.removeItem("auth_token");
         localStorage.removeItem("auth_user");
         localStorage.removeItem("auth_remember_me");
         navigate("/login", { replace: true });
@@ -75,9 +77,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     // Inactivity Timer
-    const lastActivityRef = useState(() => Date.now())[0]; // Using state as ref to keep it stable but mutable via window
-    // Actually, let's use a real ref
-    const lastActivity = useRef(Date.now());
+    const lastActivity = useRef(0);
+
+    useEffect(() => {
+        lastActivity.current = Date.now();
+    }, []);
 
     const resetActivity = useCallback(() => {
         lastActivity.current = Date.now();
@@ -87,7 +91,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, [showInactivityModal]);
 
     useEffect(() => {
-        if (!token || rememberMe) return;
+        if (!user || rememberMe) return; // Check user instead of token
 
         const events = ["mousedown", "mousemove", "keydown", "scroll", "touchstart"];
         const handleActivity = () => {
@@ -116,14 +120,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             events.forEach(event => window.removeEventListener(event, handleActivity));
             clearInterval(intervalId);
         };
-    }, [token, rememberMe, logout, showInactivityModal]);
+    }, [user, rememberMe, logout, showInactivityModal]);
 
     return (
         <AuthContext.Provider
             value={{
-                token,
                 user,
-                isAuthenticated: !!token,
+                isAuthenticated: !!user,
                 login,
                 logout,
                 updateUser,
