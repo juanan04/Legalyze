@@ -44,7 +44,7 @@ resend:
 
 app:
   frontend:
-    url: ${FRONTEND_URL:http://localhost:5173}
+    url: ${FRONTEND_URL}
 
 stripe:
   api-key: ${STRIPE_API_KEY}
