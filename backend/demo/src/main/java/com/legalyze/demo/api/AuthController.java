@@ -24,16 +24,18 @@ public class AuthController {
     public ResponseEntity<RegisterResponse> register(@RequestBody @Valid RegisterRequest request,
             HttpServletResponse response) {
         RegisterResponse regResponse = authService.register(request);
-        setJwtCookie(response, regResponse.getToken());
-        regResponse.setToken(null); // Don't send token in body
+        // setJwtCookie(response, regResponse.getToken()); // Cookie logic
+        // removed/disabled
+        // regResponse.setToken(null); // Don't hide token, send it in body
         return ResponseEntity.ok(regResponse);
     }
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody @Valid LoginRequest request, HttpServletResponse response) {
         LoginResponse loginResponse = authService.login(request);
-        setJwtCookie(response, loginResponse.getToken());
-        loginResponse.setToken(null); // Don't send token in body
+        // setJwtCookie(response, loginResponse.getToken()); // Cookie logic
+        // removed/disabled
+        // loginResponse.setToken(null); // Don't hide token, send it in body
         return ResponseEntity.ok(loginResponse);
     }
 

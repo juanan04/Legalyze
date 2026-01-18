@@ -33,7 +33,7 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf.disable()) // Disable CSRF
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/api/payments/webhook").permitAll() // Allow auth endpoints
                         .anyRequest().authenticated()) // Secure everything else
@@ -63,8 +63,8 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Front de Vite
-        config.setAllowedOrigins(List.of(frontendUrl));
+        // Allow both configured URL and Vercel production URL
+        config.setAllowedOrigins(List.of(frontendUrl, "https://legalyze-one.vercel.app"));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));

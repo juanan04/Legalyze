@@ -31,7 +31,6 @@ const LoginPage = () => {
             const token: string = res.data.token;
             const user = res.data.user;
 
-            // --- AÑADE ESTO (Línea Crítica) ---
             // Guardamos el token para que api.ts lo encuentre
             if (token) {
                 localStorage.setItem("token", token);
@@ -39,7 +38,6 @@ const LoginPage = () => {
                 console.error("El backend no devolvió un token:", res.data);
                 throw new Error("Error de autenticación: No se recibió token.");
             }
-            // ----------------------------------
 
             // 2. Actualizamos el estado global de React
             login(token, user, rememberMe);

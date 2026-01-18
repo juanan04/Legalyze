@@ -36,14 +36,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String jwt = null;
         String userEmail;
 
-        if (request.getCookies() != null) {
-            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
-                if ("jwt".equals(cookie.getName())) {
-                    jwt = cookie.getValue();
-                    break;
-                }
-            }
-        }
+        // Cookie logic removed to enforce Bearer token usage
+        // if (request.getCookies() != null) { ... }
 
         if (jwt == null) {
             final String authHeader = request.getHeader("Authorization");
