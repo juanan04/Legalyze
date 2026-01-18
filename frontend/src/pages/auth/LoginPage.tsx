@@ -27,11 +27,28 @@ const LoginPage = () => {
         try {
             const res = await api.post("/api/auth/login", { email, password, rememberMe });
 
+            // 1. Extraemos los datos
             const token: string = res.data.token;
             const user = res.data.user;
+
+            // --- AÑADE ESTO (Línea Crítica) ---
+            // Guardamos el token para que api.ts lo encuentre
+            if (token) {
+                localStorage.setItem("token", token);
+            } else {
+                console.error("El backend no devolvió un token:", res.data);
+                throw new Error("Error de autenticación: No se recibió token.");
+            }
+            // ----------------------------------
+
+            // 2. Actualizamos el estado global de React
             login(token, user, rememberMe);
+
+            // La navegación la maneja el useEffect o el AuthContext, 
+            // pero si no redirige, puedes descomentar esto:
+            // navigate("/dashboard"); 
+
         } catch (err) {
-            // El interceptor de axios ya extrae el mensaje del backend
             if (err instanceof Error) {
                 setError(err.message);
             } else {
