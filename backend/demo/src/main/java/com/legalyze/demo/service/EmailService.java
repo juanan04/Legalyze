@@ -19,6 +19,9 @@ public class EmailService {
     @Value("${resend.from-email}")
     private String fromEmail;
 
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
+
     public void sendVerificationEmail(String to, String token) {
         if (resendApiKey == null || resendApiKey.isEmpty()) {
             log.warn("Resend API key is not configured. Skipping email sending.");
@@ -27,7 +30,7 @@ public class EmailService {
 
         Resend resend = new Resend(resendApiKey);
 
-        String verificationLink = "http://localhost:5173/verify-email?token=" + token;
+        String verificationLink = frontendUrl + "/verify-email?token=" + token;
 
         String htmlContent = """
                 <!DOCTYPE html>

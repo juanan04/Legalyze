@@ -45,7 +45,7 @@ const DashboardPage = () => {
     const [isResending, setIsResending] = useState(false);
 
     useEffect(() => {
-        let interval: NodeJS.Timeout;
+        let interval: ReturnType<typeof setInterval>;
         if (resendCooldown > 0) {
             interval = setInterval(() => {
                 setResendCooldown((prev) => prev - 1);
@@ -72,11 +72,11 @@ const DashboardPage = () => {
             setIsLoading(true);
             try {
                 const [generatedRes, analyzedRes] = await Promise.all([
-                    api.get<GeneratedContract[]>("/api/generated-contracts"),
-                    api.get<AnalyzedContract[]>("/api/contracts/analysis"),
+                    api.get<{ content: GeneratedContract[] }>("/api/generated-contracts"),
+                    api.get<{ content: AnalyzedContract[] }>("/api/contracts/analysis"),
                 ]);
 
-                const generatedItems: ActivityItem[] = generatedRes.data.map((item) => ({
+                const generatedItems: ActivityItem[] = generatedRes.data.content.map((item) => ({
                     id: item.id,
                     type: "GENERATED",
                     title: item.templateName || item.templateCode,
@@ -84,7 +84,7 @@ const DashboardPage = () => {
                     status: "Generado",
                 }));
 
-                const analyzedItems: ActivityItem[] = analyzedRes.data.map((item) => ({
+                const analyzedItems: ActivityItem[] = analyzedRes.data.content.map((item) => ({
                     id: item.id,
                     type: "ANALYZED",
                     title: item.originalFileName,

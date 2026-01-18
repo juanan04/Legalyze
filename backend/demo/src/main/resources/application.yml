@@ -43,11 +43,15 @@ resend:
   api-key: ${RESEND_API_KEY}
   from-email: ${RESEND_FROM_EMAIL}
 
+app:
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:5173}
+
 stripe:
   api-key: ${STRIPE_API_KEY}
   webhook-secret: ${STRIPE_WEBHOOK_SECRET}
-  success-url: ${STRIPE_SUCCESS_URL:http://localhost:5173/payment/success}
-  cancel-url: ${STRIPE_CANCEL_URL:http://localhost:5173/payment/cancel}
+  success-url: ${STRIPE_SUCCESS_URL:${app.frontend.url}/payment/success}
+  cancel-url: ${STRIPE_CANCEL_URL:${app.frontend.url}/payment/cancel}
 
 ai:
   provider: ${AI_PROVIDER}

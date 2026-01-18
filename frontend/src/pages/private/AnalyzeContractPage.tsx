@@ -276,7 +276,7 @@ const AnalyzeContractPage = () => {
         }
     };
 
-    const closeError = () => setError(null);
+
 
     if (!user?.emailVerified) {
         return (

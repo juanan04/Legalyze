@@ -34,6 +34,15 @@ const ProfilePage = () => {
     // Delete Account state
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [verificationWord, setVerificationWord] = useState("");
+    const [deleteConfirmationInput, setDeleteConfirmationInput] = useState("");
+
+    const openDeleteModal = () => {
+        const word = Math.random().toString(36).substring(2, 6).toUpperCase();
+        setVerificationWord(word);
+        setDeleteConfirmationInput("");
+        setIsDeleteModalOpen(true);
+    };
 
     // Fallback por si no hay usuario (aunque debería haber si es ruta protegida)
     if (!user) return null;
@@ -266,27 +275,6 @@ const ProfilePage = () => {
                         </div>
                     </section>
 
-                    {/* Plan actual */}
-                    {/* <section>
-                        <h3 className="text-xl font-semibold mb-4 text-white">Mi plan</h3>
-                        <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <div>
-                                <h4 className="text-lg font-semibold text-white">
-                                    {displayUser.planName}
-                                </h4>
-                                <p className="text-sm text-slate-400">
-                                    Se renueva el {displayUser.planRenewal}
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                className="bg-[#2563EB] text-white text-sm font-semibold py-2 px-5 rounded-lg hover:bg-[#1D4ED8] transition-colors"
-                            >
-                                Gestionar plan
-                            </button>
-                        </div>
-                    </section> */}
-
                     {/* Legal y soporte */}
                     <section>
                         <h3 className="text-xl font-semibold mb-4 text-white">
@@ -314,7 +302,7 @@ const ProfilePage = () => {
                                 </li>
                                 <li>
                                     <Link
-                                        to="/disclaimer" // Assuming help/support goes here or mailto
+                                        to="/disclaimer"
                                         className="w-full flex justify-between items-center px-4 py-3 text-sm hover:bg-slate-800/70 transition-colors text-slate-300 hover:text-white"
                                     >
                                         <span>Ayuda y soporte</span>
@@ -402,7 +390,7 @@ const ProfilePage = () => {
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setIsDeleteModalOpen(true)}
+                                    onClick={openDeleteModal}
                                     className="text-red-500 font-semibold py-2 px-5 rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer"
                                 >
                                     Eliminar cuenta
@@ -415,7 +403,7 @@ const ProfilePage = () => {
                 {/* Delete Account Modal */}
                 {isDeleteModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200">
                             <div className="flex flex-col items-center text-center mb-6">
                                 <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
                                     <AlertTriangle className="w-6 h-6 text-red-500" />
@@ -423,9 +411,19 @@ const ProfilePage = () => {
                                 <h3 className="text-xl font-bold text-white mb-2">
                                     ¿Eliminar cuenta permanentemente?
                                 </h3>
-                                <p className="text-slate-400 text-sm">
+                                <p className="text-slate-400 text-sm mb-4">
                                     Esta acción no se puede deshacer. Se eliminarán todos tus datos, historial de contratos y créditos restantes.
                                 </p>
+                                <div className="w-full bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                                    <p className="text-xs text-slate-400 mb-2">Escribe la palabra <span className="font-mono font-bold text-white select-all">{verificationWord}</span> para confirmar:</p>
+                                    <input
+                                        type="text"
+                                        value={deleteConfirmationInput}
+                                        onChange={(e) => setDeleteConfirmationInput(e.target.value.toUpperCase())}
+                                        placeholder={verificationWord}
+                                        className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-center text-white font-mono tracking-widest focus:ring-2 focus:ring-red-500 outline-none uppercase"
+                                    />
+                                </div>
                             </div>
                             <div className="flex gap-3">
                                 <button
@@ -436,8 +434,8 @@ const ProfilePage = () => {
                                 </button>
                                 <button
                                     onClick={handleDeleteAccount}
-                                    disabled={isDeleting}
-                                    className="flex-1 py-2.5 rounded-xl font-medium text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 cursor-pointer"
+                                    disabled={isDeleting || deleteConfirmationInput !== verificationWord}
+                                    className="flex-1 py-2.5 rounded-xl font-medium text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                 >
                                     {isDeleting ? "Eliminando..." : "Sí, eliminar"}
                                 </button>
@@ -446,8 +444,7 @@ const ProfilePage = () => {
                     </div>
                 )}
             </div>
-
-        </DashboardLayout >
+        </DashboardLayout>
     );
 };
 

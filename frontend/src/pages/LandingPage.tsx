@@ -3,13 +3,6 @@ import logo from "../assets/logo.png";
 
 const LandingPage = () => {
 
-    const scrollToDemo = () => {
-        const demoSection = document.getElementById('demo-section');
-        if (demoSection) {
-            demoSection.scrollIntoView({ behavior: 'smooth' });
-        }
-    };
-
     return (
         <div className="w-full max-w-5xl mx-auto px-4 md:px-6 py-12 md:py-20 flex flex-col items-center">
 
@@ -37,28 +30,6 @@ const LandingPage = () => {
                     >
                         Analizar contrato gratis
                     </Link>
-                    <button
-                        onClick={scrollToDemo}
-                        className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-4 px-8 rounded-xl transition-all duration-200 border border-slate-700 cursor-pointer"
-                    >
-                        Ver ejemplo de análisis
-                    </button>
-                </div>
-            </section>
-
-            {/* 1.5) DEMO */}
-            <section id="demo-section" className="w-full mb-20 text-center scroll-mt-24">
-                <div className="mx-auto max-w-4xl aspect-video bg-slate-800 rounded-2xl border border-slate-700 flex items-center justify-center relative overflow-hidden shadow-2xl shadow-blue-900/20 group">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-slate-900/50 to-transparent"></div>
-                    {/* Placeholder para futuro GIF */}
-                    <div className="flex flex-col items-center gap-3 z-10 p-6">
-                        <span className="text-4xl md:text-5xl opacity-50">🎬</span>
-                        <p className="text-slate-400 font-medium animate-pulse">
-                            Video de demostración próximamente...
-                        </p>
-                    </div>
-
-                    {/* <img src="/demo.gif" alt="Demo Legalyze" className="absolute inset-0 w-full h-full object-cover" /> */}
                 </div>
             </section>
 

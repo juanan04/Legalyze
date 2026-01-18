@@ -3,7 +3,7 @@ import DashboardLayout from "../../components/layout/DashboardLayout";
 import { api } from "../../lib/api";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { AnalysisReport } from "../../components/analysis/AnalysisReport";
-import { Download, ChevronLeft, ChevronRight, FileText, Search } from "lucide-react";
+import { Download, ChevronLeft, ChevronRight, FileText } from "lucide-react";
 
 type ContractType = "GENERATED" | "ANALYZED";
 
