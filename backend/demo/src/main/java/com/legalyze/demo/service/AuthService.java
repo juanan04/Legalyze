@@ -113,6 +113,7 @@ public class AuthService {
         userDto.setFreeTrialsRemaining(user.getFreeTrialsRemaining());
         userDto.setFreeAnalysisUsed(user.getFreeAnalysisUsed());
         userDto.setEmailVerified(user.getEmailVerified());
+        userDto.setBetaNoticeAck(user.getBetaNoticeAck());
 
         LoginResponse resp = new LoginResponse();
         resp.setToken(token);

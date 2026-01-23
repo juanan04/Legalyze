@@ -22,7 +22,7 @@ const PrivacyPolicyPage: React.FC = () => {
                         </p>
                         <ul className="list-disc pl-5 mt-2 space-y-1">
                             <li><strong>Identidad:</strong> Legalyze (Juan Antonio Aragón)</li>
-                            <li><strong>Email:</strong> ja.aragon@gmail.com</li>
+                            <li><strong>Email:</strong> ja.business.aragon23@gmail.com</li>
                             {/* Add address/CIF if available */}
                         </ul>
                     </section>
@@ -65,7 +65,7 @@ const PrivacyPolicyPage: React.FC = () => {
 
                     <section>
                         <h2 className="text-xl font-semibold text-white mb-3">5. Derechos</h2>
-                        <p>Usted tiene derecho a acceder, rectificar y suprimir los datos, así como otros derechos (limitación, portabilidad, oposición), enviando un email a ja.aragon@gmail.com.</p>
+                        <p>Usted tiene derecho a acceder, rectificar y suprimir los datos, así como otros derechos (limitación, portabilidad, oposición), enviando un email a ja.business.aragon23@gmail.com.</p>
                     </section>
                 </div>
             </div>

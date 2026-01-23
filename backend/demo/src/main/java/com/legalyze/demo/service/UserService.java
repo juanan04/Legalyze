@@ -52,6 +52,7 @@ public class UserService implements UserDetailsService {
         dto.setFreeTrialsRemaining(u.getFreeTrialsRemaining());
         dto.setFreeAnalysisUsed(u.getFreeAnalysisUsed());
         dto.setEmailVerified(u.getEmailVerified());
+        dto.setBetaNoticeAck(u.getBetaNoticeAck());
         return dto;
     }
 
@@ -117,6 +118,12 @@ public class UserService implements UserDetailsService {
     public void deleteAccount() {
         User u = getCurrentUser();
         u.setIsSuspended(true);
+        userRepository.save(u);
+    }
+
+    public void acknowledgeBetaNotice() {
+        User u = getCurrentUser();
+        u.setBetaNoticeAck(true);
         userRepository.save(u);
     }
 

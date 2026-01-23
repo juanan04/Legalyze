@@ -46,4 +46,10 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @org.springframework.web.bind.annotation.PostMapping("/beta-ack")
+    public ResponseEntity<Void> acknowledgeBetaNotice() {
+        userService.acknowledgeBetaNotice();
+        return ResponseEntity.ok().build();
+    }
+
 }

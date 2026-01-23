@@ -64,6 +64,10 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private Boolean emailVerified = false;
 
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean betaNoticeAck = false;
+
     @Column(length = 64)
     private String verificationToken;
 
@@ -85,6 +89,9 @@ public class User implements UserDetails {
         }
         if (emailVerified == null) {
             emailVerified = false;
+        }
+        if (betaNoticeAck == null) {
+            betaNoticeAck = false;
         }
     }
 

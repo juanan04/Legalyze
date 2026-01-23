@@ -50,7 +50,7 @@ const DisclaimerPage: React.FC = () => {
                         </p>
                         <ul className="list-disc pl-5 mt-2 space-y-1">
                             <li><strong>Nombre Comercial:</strong> Legalyze</li>
-                            <li><strong>Email de contacto:</strong> ja.aragon@gmail.com</li>
+                            <li><strong>Email de contacto:</strong> ja.business.aragon23@gmail.com</li>
                         </ul>
                     </section>
                 </div>

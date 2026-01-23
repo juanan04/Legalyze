@@ -20,6 +20,7 @@ export type User = {
     freeTrialsRemaining: number;
     freeAnalysisUsed: boolean;
     emailVerified: boolean;
+    betaNoticeAck?: boolean;
 };
 
 type AuthContextValue = {
