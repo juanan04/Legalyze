@@ -14,6 +14,16 @@ const PublicNavbar: React.FC = () => {
             </Link>
 
             <div className="flex items-center gap-4">
+                <a
+                    href="https://forms.gle/dBdeNZBACsn3oP4DA"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hidden md:flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-400 hover:text-white transition-colors"
+                >
+                    <span>🐛</span>
+                    <span>Reportar error</span>
+                </a>
+
                 {isAuthenticated ? (
                     <Link
                         to="/dashboard"
