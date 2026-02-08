@@ -107,6 +107,17 @@ const MobileNavbar = () => {
                             <span>Mi perfil</span>
                         </NavLink>
 
+                        <a
+                            href="https://forms.gle/dBdeNZBACsn3oP4DA"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => setIsOpen(false)}
+                            className={navItemInactive + " " + navItemBase}
+                        >
+                            <span className="w-5 h-5 flex items-center justify-center">🐛</span>
+                            <span>Reportar error</span>
+                        </a>
+
                         <div className="pt-4 mt-4 border-t border-slate-800">
                             <button
                                 type="button"
