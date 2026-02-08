@@ -58,18 +58,23 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    @Value("${app.frontend.url}")
+    @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
 
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Allow both configured URL and Vercel production URL
-        config.setAllowedOrigins(List.of(frontendUrl, "https://legalyze-one.vercel.app"));
+        // Use patterns to allow wildcards (easier for Vercel previews)
+        config.setAllowedOriginPatterns(List.of(
+            "http://localhost:*", 
+            "https://*.vercel.app", 
+            "https://legalyze-*.vercel.app",
+            frontendUrl
+        ));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
