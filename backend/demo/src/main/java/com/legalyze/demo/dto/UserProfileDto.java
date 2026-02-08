@@ -15,4 +15,5 @@ public class UserProfileDto {
     private Integer freeTrialsRemaining;
     private Boolean freeAnalysisUsed; // Deprecated, kept for compatibility if needed
     private Boolean emailVerified;
+    private Boolean betaNoticeAck;
 }
