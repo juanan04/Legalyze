@@ -67,11 +67,8 @@ public class SecurityConfig {
 
         // Use patterns to allow wildcards (easier for Vercel previews)
         config.setAllowedOriginPatterns(List.of(
-            "http://localhost:*", 
-            "https://*.vercel.app", 
-            "https://legalyze-*.vercel.app",
-            frontendUrl
-        ));
+                "https://legalyze-one.vercel.app",
+                frontendUrl));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));

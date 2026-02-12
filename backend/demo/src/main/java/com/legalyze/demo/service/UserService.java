@@ -56,19 +56,9 @@ public class UserService implements UserDetailsService {
         return dto;
     }
 
-    public UserProfileDto updateProfile(String name, String email, String profileImage) {
+    public UserProfileDto updateProfile(String name, String profileImage) {
         User u = getCurrentUser();
         u.setName(name);
-
-        if (!u.getEmail().equals(email)) {
-            u.setEmail(email);
-            u.setEmailVerified(false);
-            u.setVerificationToken(java.util.UUID.randomUUID().toString());
-            u.setVerificationTokenExpiry(java.time.LocalDateTime.now().plusHours(24));
-            // TODO: Send verification email to new address?
-            // For now, we just reset it. The user might need to request a new email
-            // manually or we trigger it here.
-        }
 
         if (profileImage != null) {
             u.setProfileImage(profileImage);

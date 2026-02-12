@@ -784,6 +784,13 @@ const GenerateContractPage: FC = () => {
                 {step === "config" && renderConfigStep()}
                 {step === "data" && renderDataStep()}
                 {step === "preview" && renderPreviewStep()}
+
+                {/* Disclaimer */}
+                <div className="mt-12 text-center border-t border-slate-800 pt-6">
+                    <p className="text-xs text-slate-500">
+                        Herramienta informativa basada en IA. No sustituye asesoramiento legal profesional.
+                    </p>
+                </div>
             </div>
         </DashboardLayout>
     );

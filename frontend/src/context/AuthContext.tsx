@@ -29,6 +29,7 @@ type AuthContextValue = {
     login: (token: string, user: User, rememberMe: boolean) => void;
     logout: () => void;
     updateUser: (user: User) => void;
+    refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -123,6 +124,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
     }, [user, rememberMe, logout, showInactivityModal]);
 
+    const refreshProfile = useCallback(async () => {
+        try {
+            const { data } = await api.get<User>("/api/users/me");
+            // Only update if data actually changed to avoid unnecessary re-renders
+            if (JSON.stringify(data) !== JSON.stringify(user)) {
+                setUser(data);
+                localStorage.setItem("auth_user", JSON.stringify(data));
+            }
+        } catch (error: any) {
+            console.error("Failed to refresh user profile", error);
+            if (error.response?.status === 401) {
+                logout();
+            }
+        }
+    }, [user, logout]);
+
+    // Refresh user data on mount and focus to keep verifying status in sync
+    useEffect(() => {
+        if (!user) return;
+
+        refreshProfile();
+
+        const handleFocus = () => {
+            refreshProfile();
+        };
+
+        window.addEventListener("focus", handleFocus);
+        return () => window.removeEventListener("focus", handleFocus);
+    }, [refreshProfile, user]); // verify deps
+
     return (
         <AuthContext.Provider
             value={{
@@ -131,6 +162,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 login,
                 logout,
                 updateUser,
+                refreshProfile,
             }}
         >
             {children}
