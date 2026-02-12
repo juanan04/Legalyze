@@ -42,12 +42,13 @@ const LoginPage = () => {
             // 2. Actualizamos el estado global de React
             login(token, user, rememberMe);
 
-            // La navegación la maneja el useEffect o el AuthContext, 
-            // pero si no redirige, puedes descomentar esto:
-            // navigate("/dashboard"); 
-
-        } catch (err) {
-            if (err instanceof Error) {
+        } catch (err: any) {
+            console.error("Login Error:", err);
+            // Si el error viene del backend (api.ts ya extrajo el mensaje)
+            if (err.message === "Bad credentials") {
+                setError("Contraseña o email incorrectos.");
+            } else if (err.message) {
+                // Esto cubrirá "Too many requests..." del RateLimitFilter
                 setError(err.message);
             } else {
                 setError("Ocurrió un error inesperado. Por favor, inténtalo de nuevo.");
