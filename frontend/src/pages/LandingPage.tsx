@@ -57,7 +57,7 @@ const LandingPage = () => {
                 <h2 className="text-2xl font-bold text-white mb-6">Empieza gratis hoy</h2>
                 <ul className="text-left space-y-3 text-slate-300 mb-8 max-w-xs mx-auto">
                     <li className="flex items-center gap-3">
-                        <span className="text-blue-400">✔</span> 1 análisis gratis por usuario
+                        <span className="text-blue-400">✔</span> 3 análisis gratis por usuario
                     </li>
                     <li className="flex items-center gap-3">
                         <span className="text-blue-400">✔</span> Sin tarjeta de crédito
