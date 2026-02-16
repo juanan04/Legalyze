@@ -708,7 +708,7 @@ const GenerateContractPage: FC = () => {
                         disabled={isLoading}
                         className="flex items-center gap-2 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-xl shadow-blue-500/20 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
-                        {isLoading ? "Generando..." : "Generar Contrato Final con IA"}
+                        {isLoading ? "Generando..." : "Generar Contrato con IA (2 créditos)"}
                     </button>
                 </div>
             </div>

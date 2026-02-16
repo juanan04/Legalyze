@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.beans.factory.annotation.Value;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -30,6 +31,9 @@ public class ContractAnalysisService {
     private final DocumentService documentService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
+    @Value("${ai.provider}")
+    private String aiProvider;
+
     public ContractAnalysisResponse analyze(MultipartFile file) {
         // 0. Check and consume credits
         User user = userService.getCurrentUser();
@@ -39,7 +43,7 @@ public class ContractAnalysisService {
             // For now assuming free analysis is handled via credits or specific flag
         }
 
-        userService.consumeAnalysisCredit();
+        boolean usedFree = userService.consumeAnalysisCredit();
 
         // Enforce history limit (max 30)
         long count = contractAnalysisRepository.countByUser(user);
@@ -74,7 +78,7 @@ public class ContractAnalysisService {
                     .keyClausesJson(objectMapper.writeValueAsString(aiResponse.getKeyClauses()))
                     .risksJson(objectMapper.writeValueAsString(aiResponse.getRisks()))
                     .risksJson(objectMapper.writeValueAsString(aiResponse.getRisks()))
-                    .llmModelUsed("gpt-4o-mini") // TODO: Update this based on provider
+                    .llmModelUsed("GEMINI".equalsIgnoreCase(aiProvider) ? "gemini-1.5-flash" : "gpt-4o-mini")
                     .user(user)
                     .build();
 
@@ -89,6 +93,7 @@ public class ContractAnalysisService {
             return aiResponse;
 
         } catch (Exception e) {
+            userService.refundAnalysisCredit(usedFree);
             throw new RuntimeException("Error analyzing contract", e);
         }
     }

@@ -85,12 +85,14 @@ public class UserService implements UserDetailsService {
         }
     }
 
-    public void consumeAnalysisCredit() {
+    public boolean consumeAnalysisCredit() {
         validateUserAccess();
         User u = getCurrentUser();
+        boolean usedFree = false;
 
         if (u.getFreeTrialsRemaining() > 0) {
             u.setFreeTrialsRemaining(u.getFreeTrialsRemaining() - 1);
+            usedFree = true;
             // Sync legacy field just in case
             if (u.getFreeTrialsRemaining() == 0) {
                 u.setFreeAnalysisUsed(true);
@@ -101,6 +103,29 @@ public class UserService implements UserDetailsService {
             } else {
                 throw new IllegalStateException("NO_CREDITS");
             }
+        }
+        userRepository.save(u);
+        return usedFree;
+    }
+
+    public void refundAnalysisCredit(boolean usedFree) {
+        User u = getCurrentUser();
+        if (usedFree) {
+            u.setFreeTrialsRemaining(u.getFreeTrialsRemaining() + 1);
+            u.setFreeAnalysisUsed(false); // Enable free analysis again if it was the last one
+        } else {
+            u.setCredits(u.getCredits() + 1);
+        }
+        userRepository.save(u);
+    }
+
+    public void refundGenerationCredit(boolean usedFree) {
+        User u = getCurrentUser();
+        if (usedFree) {
+            u.setFreeTrialsRemaining(u.getFreeTrialsRemaining() + 1);
+            u.setFreeAnalysisUsed(false);
+        } else {
+            u.setCredits(u.getCredits() + 2); // Generation costs 2 credits
         }
         userRepository.save(u);
     }

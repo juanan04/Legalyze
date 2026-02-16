@@ -31,9 +31,11 @@ public class AiContractGenerationService {
     private final HtmlToDocxService htmlToDocxService;
     private final ObjectMapper objectMapper;
 
-    @Transactional
+    // Removed @Transactional to allow manual credit management and avoid long db
+    // lock during AI call
     public GenerateAiContractResponse generate(GenerateAiContractRequest request) {
         User user = userService.getCurrentUser();
+        boolean usedFree = false;
 
         if (Boolean.TRUE.equals(user.getIsSuspended())) {
             throw new RuntimeException("User is suspended"); // Controller should map to 403
@@ -45,6 +47,7 @@ public class AiContractGenerationService {
         // Billing Logic
         if (user.getFreeTrialsRemaining() > 0) {
             user.setFreeTrialsRemaining(user.getFreeTrialsRemaining() - 1);
+            usedFree = true;
         } else if (user.getCredits() >= 2) {
             user.setCredits(user.getCredits() - 2);
         } else {
@@ -52,41 +55,47 @@ public class AiContractGenerationService {
         }
         userRepository.save(user);
 
-        // Generate Content
-        AiContractGenerator generator = aiGeneratorFactory.getGenerator();
-        AiContractResult result = generator.generate(request);
-
-        // Persist
-        String filledDataJson = "{}";
         try {
-            filledDataJson = objectMapper.writeValueAsString(request.getFields());
+            // Generate Content
+            AiContractGenerator generator = aiGeneratorFactory.getGenerator();
+            AiContractResult result = generator.generate(request);
+
+            // Persist
+            String filledDataJson = "{}";
+            try {
+                filledDataJson = objectMapper.writeValueAsString(request.getFields());
+            } catch (Exception e) {
+                // ignore
+            }
+
+            String templateName = templateOpt.map(t -> t.getName()).orElse(request.getTemplateCode());
+
+            GeneratedContract contract = GeneratedContract.builder()
+                    .user(user)
+                    .templateCode(request.getTemplateCode())
+                    .templateName(templateName)
+                    .filledDataJson(filledDataJson)
+                    .generatedText(result.getText())
+                    .generatedHtml(result.getHtml())
+                    .createdAt(LocalDateTime.now())
+                    .expiresAt(LocalDateTime.now().plusHours(48))
+                    .build();
+
+            GeneratedContract saved = generatedContractRepository.save(contract);
+
+            return GenerateAiContractResponse.builder()
+                    .id(saved.getId())
+                    .templateCode(saved.getTemplateCode())
+                    .generatedText(saved.getGeneratedText())
+                    .generatedHtml(saved.getGeneratedHtml())
+                    .downloadUrl("/api/generated-contracts/" + saved.getId() + "/download")
+                    .expiresAt(saved.getExpiresAt().atZone(java.time.ZoneId.systemDefault()).toInstant())
+                    .build();
+
         } catch (Exception e) {
-            // ignore
+            userService.refundGenerationCredit(usedFree);
+            throw new RuntimeException("Error generating contract", e);
         }
-
-        String templateName = templateOpt.map(t -> t.getName()).orElse(request.getTemplateCode());
-
-        GeneratedContract contract = GeneratedContract.builder()
-                .user(user)
-                .templateCode(request.getTemplateCode())
-                .templateName(templateName)
-                .filledDataJson(filledDataJson)
-                .generatedText(result.getText())
-                .generatedHtml(result.getHtml())
-                .createdAt(LocalDateTime.now())
-                .expiresAt(LocalDateTime.now().plusHours(48))
-                .build();
-
-        GeneratedContract saved = generatedContractRepository.save(contract);
-
-        return GenerateAiContractResponse.builder()
-                .id(saved.getId())
-                .templateCode(saved.getTemplateCode())
-                .generatedText(saved.getGeneratedText())
-                .generatedHtml(saved.getGeneratedHtml())
-                .downloadUrl("/api/generated-contracts/" + saved.getId() + "/download")
-                .expiresAt(saved.getExpiresAt().atZone(java.time.ZoneId.systemDefault()).toInstant())
-                .build();
     }
 
     @Transactional(readOnly = true)
