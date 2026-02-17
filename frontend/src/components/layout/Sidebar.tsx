@@ -4,7 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import {
     LayoutDashboard,
     Search,
-    FileText,
+    // FileText,
     Clock,
     User,
     LogOut
@@ -67,7 +67,7 @@ const Sidebar = () => {
                         <span>Analizar contrato</span>
                     </NavLink>
 
-                    <NavLink
+                    {/* <NavLink
                         to="/contracts/generate"
                         className={({ isActive }) =>
                             `${navItemBase} ${isActive ? navItemActive : navItemInactive
@@ -76,7 +76,7 @@ const Sidebar = () => {
                     >
                         <FileText className="w-5 h-5" />
                         <span>Generar contrato</span>
-                    </NavLink>
+                    </NavLink> */}
 
                     <NavLink
                         to="/history"
