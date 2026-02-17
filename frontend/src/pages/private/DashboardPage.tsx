@@ -5,18 +5,18 @@ import { useAuth } from "../../context/AuthContext";
 import { api } from "../../lib/api";
 import {
     FileText,
-    Plus,
+    // Plus,
     Package,
     Clock,
     User
 } from "lucide-react";
 
-interface GeneratedContract {
-    id: number;
-    templateCode: string;
-    templateName: string;
-    createdAt: string;
-}
+// interface GeneratedContract {
+//     id: number;
+//     templateCode: string;
+//     templateName: string;
+//     createdAt: string;
+// }
 
 interface AnalyzedContract {
     id: number;
@@ -71,18 +71,20 @@ const DashboardPage = () => {
         const fetchActivity = async () => {
             setIsLoading(true);
             try {
-                const [generatedRes, analyzedRes] = await Promise.all([
-                    api.get<{ content: GeneratedContract[] }>("/api/generated-contracts"),
+                // Solo obtenemos análisis, ignoramos generación por ahora
+                const [analyzedRes] = await Promise.all([
+                    // api.get<{ content: GeneratedContract[] }>("/api/generated-contracts"),
                     api.get<{ content: AnalyzedContract[] }>("/api/contracts/analysis"),
                 ]);
 
-                const generatedItems: ActivityItem[] = generatedRes.data.content.map((item) => ({
-                    id: item.id,
-                    type: "GENERATED",
-                    title: item.templateName || item.templateCode,
-                    date: item.createdAt,
-                    status: "Generado",
-                }));
+                // const generatedItems: ActivityItem[] = generatedRes.data.content.map((item) => ({
+                //     id: item.id,
+                //     type: "GENERATED",
+                //     title: item.templateName || item.templateCode,
+                //     date: item.createdAt,
+                //     status: "Generado",
+                // }));
+                const generatedItems: ActivityItem[] = [];
 
                 const analyzedItems: ActivityItem[] = analyzedRes.data.content.map((item) => ({
                     id: item.id,
@@ -211,10 +213,10 @@ const DashboardPage = () => {
                 {/* Analizar contrato */}
                 <div
                     onClick={() => navigate("/contracts/analyze")}
-                    className="group relative p-8 rounded-2xl overflow-hidden bg-linear-gradient-to-br from-indigo-400 to-purple-500 hover:shadow-2xl hover:shadow-purple-500/30 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
+                    className="group relative p-8 rounded-2xl overflow-hidden bg-linear-gradient-to-br from-indigo-400 to-purple-500 hover:shadow-2xl hover:shadow-purple-500/30 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer md:col-span-2 md:w-1/2 md:mx-auto"
                 >
                     <div className="absolute inset-0 bg-black/10" />
-                    <div className="relative z-10 text-white">
+                    <div className="relative z-10 text-white flex flex-col items-center text-center">
                         <div className="w-14 h-14 mb-4 rounded-xl bg-white/20 flex items-center justify-center">
                             <FileText className="w-8 h-8" />
                         </div>
@@ -223,8 +225,8 @@ const DashboardPage = () => {
                     </div>
                 </div>
 
-                {/* Generar contrato */}
-                <div
+                {/* Generar contrato (DESHABILITADO TEMPORALMENTE) */}
+                {/* <div
                     onClick={() => navigate("/contracts/generate")}
                     className="group relative p-8 rounded-2xl overflow-hidden bg-linear-gradient-to-br from-emerald-400 to-cyan-500 hover:shadow-2xl hover:shadow-cyan-500/30 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
                 >
@@ -236,7 +238,7 @@ const DashboardPage = () => {
                         <h2 className="text-2xl font-bold mb-1">Generar contrato</h2>
                         <p className="opacity-80">Crea un nuevo documento legal.</p>
                     </div>
-                </div>
+                </div> */}
             </section>
 
             {/* Actividad reciente */}

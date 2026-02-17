@@ -14,7 +14,7 @@ const NotFoundPage = lazy(() => import("../pages/public/NotFoundPage"));
 
 const DashboardPage = lazy(() => import("../pages/private/DashboardPage"));
 const AnalyzeContractPage = lazy(() => import("../pages/private/AnalyzeContractPage"));
-const GenerateContractPage = lazy(() => import("../pages/private/GenerateContractPage"));
+// const GenerateContractPage = lazy(() => import("../pages/private/GenerateContractPage"));
 const HistoryPage = lazy(() => import("../pages/private/HistoryPage"));
 const ProfilePage = lazy(() => import("../pages/private/ProfilePage"));
 const PricingPage = lazy(() => import("../pages/private/PricingPage"));
@@ -55,7 +55,7 @@ const AppRouter = () => (
                     <Route element={<ProtectedRoute />}>
                         <Route path="/dashboard" element={<DashboardPage />} />
                         <Route path="/contracts/analyze" element={<AnalyzeContractPage />} />
-                        <Route path="/contracts/generate" element={<GenerateContractPage />} />
+                        {/* <Route path="/contracts/generate" element={<GenerateContractPage />} /> */}
                         <Route path="/history" element={<HistoryPage />} />
                         <Route path="/profile" element={<ProfilePage />} />
                         <Route path="/pricing" element={<PricingPage />} />
