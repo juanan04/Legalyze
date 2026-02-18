@@ -32,6 +32,7 @@ public class GeneratedContractController {
     private final GeneratedContractService generatedContractService;
     private final com.legalyze.demo.service.AiContractGenerationService aiContractGenerationService;
 
+    // Future implementation
     /*
      * @PostMapping("/generate")
      * public ResponseEntity<GenerateContractResponse> generate(@RequestBody
