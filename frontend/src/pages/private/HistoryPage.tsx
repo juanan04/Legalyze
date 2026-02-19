@@ -20,13 +20,13 @@ interface RiskDto {
     severity: string;
 }
 
-interface GeneratedContractDetail {
-    id: number;
-    templateCode: string;
-    createdAt: string;
-    generatedText: string;
-    downloadUrl: string;
-}
+// interface GeneratedContractDetail {
+//     id: number;
+//     templateCode: string;
+//     createdAt: string;
+//     generatedText: string;
+//     downloadUrl: string;
+// }
 
 interface AnalyzedContractDetail {
     id: number;
@@ -38,7 +38,7 @@ interface AnalyzedContractDetail {
     risks: RiskDto[];
 }
 
-type DetailData = GeneratedContractDetail | AnalyzedContractDetail;
+type DetailData = /* GeneratedContractDetail | */ AnalyzedContractDetail;
 
 interface HistoryItem {
     id: number;
@@ -48,12 +48,12 @@ interface HistoryItem {
     status: string;
 }
 
-interface GeneratedContract {
-    id: number;
-    templateCode: string;
-    templateName: string;
-    createdAt: string;
-}
+// interface GeneratedContract {
+//     id: number;
+//     templateCode: string;
+//     templateName: string;
+//     createdAt: string;
+// }
 
 interface AnalyzedContract {
     id: number;
@@ -72,7 +72,8 @@ interface Page<T> {
 }
 
 const HistoryPage = () => {
-    const [activeTab, setActiveTab] = useState<ContractType>("GENERATED");
+    // const [activeTab, setActiveTab] = useState<ContractType>("ANALYZED");
+    const activeTab = "ANALYZED";
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
@@ -85,29 +86,29 @@ const HistoryPage = () => {
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                if (activeTab === "GENERATED") {
-                    const res = await api.get<Page<GeneratedContract>>(`/api/generated-contracts?page=${page}&size=10`);
-                    const items: HistoryItem[] = res.data.content.map((item) => ({
-                        id: item.id,
-                        type: "GENERATED",
-                        title: item.templateName || item.templateCode,
-                        date: item.createdAt,
-                        status: "Generado",
-                    }));
-                    setHistoryItems(items);
-                    setTotalPages(res.data.totalPages);
-                } else {
-                    const res = await api.get<Page<AnalyzedContract>>(`/api/contracts/analysis?page=${page}&size=10`);
-                    const items: HistoryItem[] = res.data.content.map((item) => ({
-                        id: item.id,
-                        type: "ANALYZED",
-                        title: item.originalFileName,
-                        date: item.uploadedAt,
-                        status: item.status === "COMPLETED" ? "Analizado" : item.status,
-                    }));
-                    setHistoryItems(items);
-                    setTotalPages(res.data.totalPages);
-                }
+                // if (activeTab === "GENERATED") {
+                //     const res = await api.get<Page<GeneratedContract>>(`/api/generated-contracts?page=${page}&size=10`);
+                //     const items: HistoryItem[] = res.data.content.map((item) => ({
+                //         id: item.id,
+                //         type: "GENERATED",
+                //         title: item.templateName || item.templateCode,
+                //         date: item.createdAt,
+                //         status: "Generado",
+                //     }));
+                //     setHistoryItems(items);
+                //     setTotalPages(res.data.totalPages);
+                // } else {
+                const res = await api.get<Page<AnalyzedContract>>(`/api/contracts/analysis?page=${page}&size=10`);
+                const items: HistoryItem[] = res.data.content.map((item) => ({
+                    id: item.id,
+                    type: "ANALYZED",
+                    title: item.originalFileName,
+                    date: item.uploadedAt,
+                    status: item.status === "COMPLETED" ? "Analizado" : item.status,
+                }));
+                setHistoryItems(items);
+                setTotalPages(res.data.totalPages);
+                // }
             } catch (error) {
                 console.error("Error fetching history:", error);
             } finally {
@@ -118,23 +119,23 @@ const HistoryPage = () => {
         fetchData();
     }, [activeTab, page]);
 
-    const handleTabChange = (tab: ContractType) => {
-        setActiveTab(tab);
-        setPage(0);
-    };
+    // const handleTabChange = (tab: ContractType) => {
+    //     setActiveTab(tab);
+    //     setPage(0);
+    // };
 
     const fetchDetails = async (item: HistoryItem) => {
         setSelectedItem(item);
         setDetailLoading(true);
         setDetailData(null);
         try {
-            if (item.type === "GENERATED") {
-                const res = await api.get(`/api/generated-contracts/${item.id}`);
-                setDetailData(res.data);
-            } else {
-                const res = await api.get(`/api/contracts/analysis/${item.id}`);
-                setDetailData(res.data);
-            }
+            // if (item.type === "GENERATED") {
+            //     // const res = await api.get(`/api/generated-contracts/${item.id}`);
+            //     // setDetailData(res.data);
+            // } else {
+            const res = await api.get(`/api/contracts/analysis/${item.id}`);
+            setDetailData(res.data);
+            // }
         } catch (error) {
             console.error("Error fetching details:", error);
         } finally {
@@ -142,23 +143,23 @@ const HistoryPage = () => {
         }
     };
 
-    const handleDownloadWord = async (contractId: number, fileName: string) => {
-        try {
-            const response = await api.get(`/api/generated-contracts/${contractId}/download`, {
-                responseType: 'blob',
-            });
+    // const handleDownloadWord = async (contractId: number, fileName: string) => {
+    //     try {
+    //         const response = await api.get(`/api/generated-contracts/${contractId}/download`, {
+    //             responseType: 'blob',
+    //         });
 
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `${fileName}.docx`);
-            document.body.appendChild(link);
-            link.click();
-            link.parentNode?.removeChild(link);
-        } catch (error) {
-            console.error("Error downloading contract:", error);
-        }
-    };
+    //         const url = window.URL.createObjectURL(new Blob([response.data]));
+    //         const link = document.createElement('a');
+    //         link.href = url;
+    //         link.setAttribute('download', `${fileName}.docx`);
+    //         document.body.appendChild(link);
+    //         link.click();
+    //         link.parentNode?.removeChild(link);
+    //     } catch (error) {
+    //         console.error("Error downloading contract:", error);
+    //     }
+    // };
 
     const closeModal = () => {
         setSelectedItem(null);
@@ -186,7 +187,7 @@ const HistoryPage = () => {
                 </header>
 
                 {/* Tabs */}
-                <div className="flex space-x-1 rounded-xl bg-slate-900/50 p-1 mb-6 w-fit border border-slate-800">
+                {/* <div className="flex space-x-1 rounded-xl bg-slate-900/50 p-1 mb-6 w-fit border border-slate-800">
                     <button
                         onClick={() => handleTabChange("GENERATED")}
                         className={`w-full rounded-lg py-2.5 px-6 text-sm font-medium leading-5 transition-all
@@ -207,7 +208,7 @@ const HistoryPage = () => {
                     >
                         Analizados
                     </button>
-                </div>
+                </div> */}
 
                 {/* Lista de contratos */}
                 {isLoading ? (
@@ -231,10 +232,9 @@ const HistoryPage = () => {
 
                                 <div className="flex items-center justify-start md:justify-center">
                                     <span
-                                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${contract.type === "GENERATED"
-                                            ? "bg-blue-900/50 text-blue-200 border border-blue-800"
-                                            : "bg-green-900/50 text-green-200 border border-green-800"
-                                            }`}
+                                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium 
+                                            bg-green-900/50 text-green-200 border border-green-800
+                                            `}
                                     >
                                         {contract.status}
                                     </span>
@@ -258,10 +258,10 @@ const HistoryPage = () => {
                             <span className="text-3xl text-[#2563EB]">📄</span>
                         </div>
                         <h3 className="mt-6 text-xl font-semibold text-white">
-                            No hay contratos {activeTab === "GENERATED" ? "generados" : "analizados"}
+                            No hay contratos analizados
                         </h3>
                         <p className="mt-2 text-sm text-slate-400 max-w-md mx-auto">
-                            Comienza generando o analizando tu primer documento legal para
+                            Comienza analizando tu primer documento legal para
                             verlo aquí.
                         </p>
                     </div>
@@ -326,11 +326,11 @@ const HistoryPage = () => {
                                             </p>
                                             <p className="text-slate-300">
                                                 <span className="font-medium text-slate-500">Tipo:</span>{" "}
-                                                {selectedItem.type === "GENERATED" ? "Generado" : "Analizado"}
+                                                Analizado
                                             </p>
                                         </div>
 
-                                        {selectedItem.type === "GENERATED" && (
+                                        {/* {selectedItem.type === "GENERATED" && (
                                             <div>
                                                 <h4 className="text-sm font-semibold text-blue-400 mb-2">
                                                     Contenido Generado
@@ -350,7 +350,7 @@ const HistoryPage = () => {
                                                     </div>
                                                 )}
                                             </div>
-                                        )}
+                                        )} */}
 
                                         {selectedItem.type === "ANALYZED" && (
                                             <div className="space-y-6">

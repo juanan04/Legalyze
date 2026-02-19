@@ -171,8 +171,8 @@ const AnalyzeContractPage = () => {
 
     const validateAndUpload = (selectedFile: File) => {
         // Frontend validation
-        if (selectedFile.size > 5 * 1024 * 1024) {
-            setError("El archivo es demasiado grande. El tamaño máximo es 5MB.");
+        if (selectedFile.size > 15 * 1024 * 1024) {
+            setError("El archivo es demasiado grande. El tamaño máximo es 15MB.");
             return;
         }
 
@@ -212,9 +212,14 @@ const AnalyzeContractPage = () => {
             setPreviewResult(response.data);
             setIsAnalyzing(false);
 
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            setError("Error al generar la vista previa. Inténtalo de nuevo.");
+            // Mostrar mensaje del backend si existe (ej: "Archiva demasiado grande")
+            if (err.message && err.message !== "Network Error") {
+                setError(err.message);
+            } else {
+                setError("Error al generar la vista previa. Inténtalo de nuevo.");
+            }
             setIsAnalyzing(false);
         }
     };
@@ -379,6 +384,12 @@ const AnalyzeContractPage = () => {
                     <div className="max-w-3xl mx-auto space-y-10">
                         {!previewResult && !isAnalyzing && (
                             <section className="text-center space-y-6">
+                                {error && (
+                                    <div className="max-w-md mx-auto bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-lg flex items-center gap-3 text-left animate-in fade-in slide-in-from-top-2">
+                                        <AlertCircle className="w-5 h-5 shrink-0" />
+                                        <p className="text-sm">{error}</p>
+                                    </div>
+                                )}
 
                                 <div
                                     className={`border-2 border-dashed rounded-xl p-8 transition-colors ${isDragging
@@ -423,7 +434,7 @@ const AnalyzeContractPage = () => {
                                         </button>
 
                                         <p className="text-xs text-slate-500 pt-2">
-                                            Soporta PDF y DOCX hasta 5MB
+                                            Soporta PDF y DOCX hasta 15MB
                                         </p>
                                     </div>
                                 </div>
