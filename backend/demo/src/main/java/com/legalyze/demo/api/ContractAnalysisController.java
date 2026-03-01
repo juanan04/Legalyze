@@ -28,8 +28,17 @@ public class ContractAnalysisController {
     private final ContractAnalysisService contractAnalysisService;
 
     @PostMapping("/analyze")
-    public ResponseEntity<ContractAnalysisResponse> analyze(@RequestParam("file") MultipartFile file) {
-        return ResponseEntity.ok(contractAnalysisService.analyze(file));
+    public ResponseEntity<?> analyze(@RequestParam("file") MultipartFile file) {
+        try {
+            return ResponseEntity.ok(contractAnalysisService.analyze(file));
+        } catch (IllegalStateException e) {
+            if (e.getMessage() != null && e.getMessage().contains("Payment Required")) {
+                return ResponseEntity.status(402).body(java.util.Map.of("error", e.getMessage()));
+            }
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(java.util.Map.of("error", e.getMessage()));
+        }
     }
 
     @PostMapping("/preview")

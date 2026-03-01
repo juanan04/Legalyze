@@ -18,6 +18,8 @@ const ProfilePage = () => {
     const [formData, setFormData] = useState({
         name: user?.name || "",
         email: user?.email || "",
+        agencyName: user?.agencyName || "",
+        jobPosition: user?.jobPosition || "",
     });
     const [previewImage, setPreviewImage] = useState<string | null>(user?.profileImage || null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -61,13 +63,15 @@ const ProfilePage = () => {
             setFormData({
                 name: user.name,
                 email: user.email,
+                agencyName: user.agencyName || "",
+                jobPosition: user.jobPosition || "",
             });
             setPreviewImage(user.profileImage || null);
         }
         setIsEditing(!isEditing);
     };
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
@@ -94,6 +98,8 @@ const ProfilePage = () => {
             const payload = {
                 name: formData.name,
                 email: formData.email,
+                agencyName: formData.agencyName,
+                jobPosition: formData.jobPosition,
                 profileImage: previewImage
             };
 
@@ -238,7 +244,7 @@ const ProfilePage = () => {
                             Información personal
                         </h3>
                         <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl space-y-4">
-                            <div className="grid grid-cols-1 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-xs font-medium text-slate-400 mb-1">
                                         Nombre completo
@@ -255,22 +261,62 @@ const ProfilePage = () => {
                                         <p className="text-sm text-slate-100">{displayUser.name}</p>
                                     )}
                                 </div>
+                                <div className="border-t md:border-t-0 md:border-l border-slate-800 pt-4 md:pt-0 md:pl-4">
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">
+                                        Correo electrónico
+                                    </label>
+                                    {isEditing ? (
+                                        <input
+                                            type="email"
+                                            value={formData.email}
+                                            disabled
+                                            className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 text-slate-500 cursor-not-allowed"
+                                        />
+                                    ) : (
+                                        <p className="text-sm text-slate-100">{displayUser.email}</p>
+                                    )}
+                                </div>
                             </div>
 
-                            <div className="border-t border-slate-800 pt-4">
-                                <label className="block text-xs font-medium text-slate-400 mb-1">
-                                    Correo electrónico
-                                </label>
-                                {isEditing ? (
-                                    <input
-                                        type="email"
-                                        value={formData.email}
-                                        disabled
-                                        className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 text-slate-500 cursor-not-allowed"
-                                    />
-                                ) : (
-                                    <p className="text-sm text-slate-100">{displayUser.email}</p>
-                                )}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-slate-800 pt-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">
+                                        Empresa / Inmobiliaria
+                                    </label>
+                                    {isEditing ? (
+                                        <input
+                                            type="text"
+                                            name="agencyName"
+                                            value={formData.agencyName}
+                                            onChange={handleInputChange}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    ) : (
+                                        <p className="text-sm text-slate-100">{formData.agencyName || "No especificado"}</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">
+                                        Cargo
+                                    </label>
+                                    {isEditing ? (
+                                        <select
+                                            name="jobPosition"
+                                            value={formData.jobPosition}
+                                            onChange={handleInputChange}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="" disabled>Selecciona una opción</option>
+                                            <option value="Gerente/Director">Gerente/Director</option>
+                                            <option value="Asesor Inmobiliario">Asesor Inmobiliario</option>
+                                            <option value="Administración/Legal">Administración/Legal</option>
+                                            <option value="Inversor Particular">Inversor Particular</option>
+                                            <option value="Otro">Otro</option>
+                                        </select>
+                                    ) : (
+                                        <p className="text-sm text-slate-100">{formData.jobPosition || "No especificado"}</p>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </section>
@@ -308,6 +354,17 @@ const ProfilePage = () => {
                                         <span>Ayuda y soporte</span>
                                         <ChevronRight className="w-4 h-4 text-slate-500" />
                                     </Link>
+                                </li>
+                                <li>
+                                    <a
+                                        href="https://forms.gle/Leq1DwavJ4znf3Pk6"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="w-full flex justify-between items-center px-4 py-3 text-sm hover:bg-slate-800/70 transition-colors text-lime-400 hover:text-lime-300 font-medium bg-lime-400/5"
+                                    >
+                                        <span>Enviar Feedback / Reportar Error (Google Forms)</span>
+                                        <ChevronRight className="w-4 h-4 text-lime-400" />
+                                    </a>
                                 </li>
                             </ul>
                         </div>

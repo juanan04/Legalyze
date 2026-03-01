@@ -1,7 +1,7 @@
 import type { FormEvent } from "react";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { api } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 
@@ -13,6 +13,7 @@ const LoginPage = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (isAuthenticated) {
@@ -23,156 +24,149 @@ const LoginPage = () => {
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setError(null);
+        setLoading(true);
 
         try {
             const res = await api.post("/api/auth/login", { email, password, rememberMe });
 
-            // 1. Extraemos los datos
             const token: string = res.data.token;
             const user = res.data.user;
 
-            // Guardamos el token para que api.ts lo encuentre
             if (token) {
                 localStorage.setItem("token", token);
             } else {
-                console.error("El backend no devolvió un token:", res.data);
                 throw new Error("Error de autenticación: No se recibió token.");
             }
 
-            // 2. Actualizamos el estado global de React
             login(token, user, rememberMe);
-
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Login Error:", err);
-            // Si el error viene del backend (api.ts ya extrajo el mensaje)
-            if (err.message === "Bad credentials") {
-                setError("Contraseña o email incorrectos.");
-            } else if (err.message) {
-                // Esto cubrirá "Too many requests..." del RateLimitFilter
-                setError(err.message);
+            if (err instanceof Error) {
+                if (err.message === "Bad credentials") {
+                    setError("Contraseña o correo incorrectos.");
+                } else {
+                    setError(err.message);
+                }
             } else {
                 setError("Ocurrió un error inesperado. Por favor, inténtalo de nuevo.");
             }
+            setLoading(false);
         }
     };
 
     return (
-        <div className="flex-grow flex items-center justify-center py-12 px-4">
-            <div className="w-full max-w-md mx-auto">
-                {/* Logo + textos */}
-                <div className="flex flex-col items-center text-center mb-8">
-                    <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-2">
-                        Bienvenido de vuelta
-                    </h1>
-                    <p className="text-gray-400">
-                        Inicia sesión para acceder a tu cuenta.
-                    </p>
-                </div>
-
-                {/* Mensaje de error */}
-                {error && (
-                    <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
-                        {error}
+        <div className="flex w-full min-h-screen">
+            {/* Left Side (Form) */}
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-16 bg-[#0f172a] relative z-10 pt-24 lg:pt-0">
+                <div className="w-full max-w-md">
+                    <div className="mb-10 text-center lg:text-left">
+                        <h1 className="text-3xl font-bold text-white mb-3">
+                            Bienvenido de vuelta
+                        </h1>
+                        <p className="text-slate-400 text-sm">
+                            ¿No tienes una cuenta?{" "}
+                            <Link to="/register" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
+                                Regístrate aquí
+                            </Link>
+                        </p>
                     </div>
-                )}
 
-                {/* Card */}
-                <div className="bg-[#020617] border border-[#1f2937] rounded-2xl p-8 shadow-lg">
-                    <form className="space-y-6" onSubmit={handleSubmit}>
-                        {/* Email */}
+                    {error && (
+                        <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                            {error}
+                        </div>
+                    )}
+
+                    <form className="space-y-5" onSubmit={handleSubmit}>
                         <div>
-                            <label
-                                htmlFor="email"
-                                className="block text-sm font-medium text-gray-300"
-                            >
-                                Correo Electrónico
+                            <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
+                                Correo electrónico
                             </label>
-                            <div className="mt-1">
-                                <input
-                                    id="email"
-                                    type="email"
-                                    autoComplete="email"
-                                    required
-                                    className="block w-full px-4 py-3 rounded-md bg-[#020617] border border-[#1f2937] text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6]"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="tu@correo.com"
-                                />
-                            </div>
+                            <input
+                                id="email"
+                                type="email"
+                                autoComplete="email"
+                                required
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                            />
                         </div>
 
-                        {/* Password */}
                         <div>
-                            <div className="flex items-center justify-between">
-                                <label
-                                    htmlFor="password"
-                                    className="block text-sm font-medium text-gray-300"
-                                >
-                                    Contraseña
-                                </label>
-                            </div>
-                            <div className="mt-1 relative">
+                            <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
+                                Contraseña
+                            </label>
+                            <div className="relative">
                                 <input
                                     id="password"
                                     type={showPassword ? "text" : "password"}
                                     autoComplete="current-password"
                                     required
-                                    className="block w-full px-4 py-3 rounded-md bg-[#020617] border border-[#1f2937] text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] pr-10"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="••••••••"
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors pr-10"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-300 cursor-pointer"
+                                    className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
                                 >
-                                    {showPassword ? (
-                                        <EyeOff className="h-5 w-5" />
-                                    ) : (
-                                        <Eye className="h-5 w-5" />
-                                    )}
+                                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                 </button>
                             </div>
                         </div>
 
-                        {/* Remember Me */}
-                        <div className="flex items-center">
-                            <input
-                                id="remember-me"
-                                name="remember-me"
-                                type="checkbox"
-                                className="h-4 w-4 rounded border-gray-300 text-[#3b82f6] focus:ring-[#3b82f6] bg-[#020617] border-[#1f2937]"
-                                checked={rememberMe}
-                                onChange={(e) => setRememberMe(e.target.checked)}
-                            />
-                            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-300">
-                                Recordar usuario
-                            </label>
+                        <div className="flex items-center justify-between mt-2">
+                            <div className="flex items-center">
+                                <input
+                                    id="remember-me"
+                                    type="checkbox"
+                                    checked={rememberMe}
+                                    onChange={(e) => setRememberMe(e.target.checked)}
+                                    className="h-4 w-4 rounded border-slate-600 text-indigo-500 focus:ring-indigo-500 bg-slate-800"
+                                />
+                                <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-400 cursor-pointer">
+                                    Recordar dispositivo
+                                </label>
+                            </div>
+                            {/* <a href="#" className="text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors">
+                                ¿Has olvidado tu contraseña?
+                            </a> */}
                         </div>
 
-                        {/* Botón */}
-                        <div>
-                            <button
-                                type="submit"
-                                className="w-full flex justify-center py-3 px-4 rounded-md text-base font-medium text-white bg-[#3b82f6] hover:bg-[#2563eb] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3b82f6] focus:ring-offset-[#0f172a] transition-colors duration-150 cursor-pointer"
-                            >
-                                Iniciar Sesión
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                {/* Footer */}
-                <div className="mt-8 text-center">
-                    <p className="text-sm text-gray-400">
-                        ¿No tienes una cuenta?{" "}
-                        <Link
-                            to="/register"
-                            className="font-medium text-[#3b82f6] hover:underline"
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full py-3 px-4 mt-6 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-[#0f172a] shadow-lg shadow-indigo-600/20 transition-all duration-200"
                         >
-                            Regístrate
-                        </Link>
+                            {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
+                        </button>
+                    </form>
+
+                    <div className="mt-8">
+                        <p className="text-xs text-center text-slate-500 leading-relaxed">
+                            Al iniciar sesión, aceptas nuestra{" "}
+                            <Link to="/privacy" className="text-slate-400 hover:text-white transition-colors underline decoration-slate-600 underline-offset-2">Política de Privacidad</Link>
+                            {" "}y{" "}
+                            <Link to="/terms" className="text-slate-400 hover:text-white transition-colors underline decoration-slate-600 underline-offset-2">Términos de Servicio</Link>.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Right Side (Illustration) */}
+            <div className="hidden lg:flex w-1/2 bg-[#020617] items-center justify-center p-12 relative overflow-hidden border-l border-white/5">
+                {/* Abstract elements */}
+                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-[100px] pointer-events-none"></div>
+
+                <div className="relative z-10 max-w-lg text-center">
+                    <div className="w-24 h-24 mx-auto bg-slate-900 border border-slate-800 rounded-3xl flex items-center justify-center mb-8 shadow-2xl shadow-indigo-900/20">
+                        <ShieldCheck className="w-12 h-12 text-indigo-400" />
+                    </div>
+                    <h2 className="text-3xl font-bold text-white mb-4">La IA legal de confianza</h2>
+                    <p className="text-slate-400 text-lg leading-relaxed">
+                        Accede a tus informes, revisa tus análisis anteriores y continúa protegiendo tus operaciones inmobiliarias con total seguridad.
                     </p>
                 </div>
             </div>

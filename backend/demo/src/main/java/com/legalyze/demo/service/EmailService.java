@@ -92,4 +92,27 @@ public class EmailService {
             throw new IllegalArgumentException("Error inesperado al enviar el correo");
         }
     }
+
+    public void sendAdminNotification(String subject, String content) {
+        if (resendApiKey == null || resendApiKey.isEmpty()) {
+            log.warn("Resend API key is not configured. Skipping admin notification.");
+            return;
+        }
+
+        Resend resend = new Resend(resendApiKey);
+
+        SendEmailRequest params = SendEmailRequest.builder()
+                .from(fromEmail != null ? fromEmail : "noreply@juanan.me")
+                .to("jca@juanan.me") // Replace with admin email later if needed, but currently hardcoded to user's personal email
+                .subject(subject)
+                .html("<p>" + content + "</p>")
+                .build();
+
+        try {
+            resend.emails().send(params);
+            log.info("Admin notification sent: {}", subject);
+        } catch (Exception e) {
+            log.error("Error sending admin notification: {}", e.getMessage());
+        }
+    }
 }

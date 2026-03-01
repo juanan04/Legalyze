@@ -18,11 +18,6 @@ public class RateLimitConfig {
     // Register: 3 attempts / 1 hour
     private Limit register = new Limit(3, 3600);
 
-    // AI Generation: 10 / 10 min (User)
-    private Limit generationUser = new Limit(10, 600);
-    // AI Generation: 30 / 10 min (IP)
-    private Limit generationIp = new Limit(30, 600);
-
     // AI Analysis: 10 / 10 min (User)
     private Limit analysisUser = new Limit(10, 600);
     // AI Analysis: 30 / 10 min (IP)
@@ -33,7 +28,8 @@ public class RateLimitConfig {
         private int capacity;
         private int durationSeconds;
 
-        public Limit() {}
+        public Limit() {
+        }
 
         public Limit(int capacity, int durationSeconds) {
             this.capacity = capacity;

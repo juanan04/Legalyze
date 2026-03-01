@@ -7,6 +7,8 @@ public class UserDto {
     private Long id;
     private String name;
     private String email;
+    private String agencyName;
+    private String jobPosition;
     private String profileImage;
     private Integer credits;
     private Integer freeTrialsRemaining;

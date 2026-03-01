@@ -66,17 +66,14 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    @Value("${app.frontend.url:http://localhost:5173}")
+    @Value("${app.frontend.url}")
     private String frontendUrl;
 
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Use patterns to allow wildcards (easier for Vercel previews)
-        config.setAllowedOriginPatterns(List.of(
-                "https://legalyze-one.vercel.app",
-                frontendUrl));
+        config.setAllowedOriginPatterns(List.of(frontendUrl));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));

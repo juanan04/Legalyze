@@ -26,6 +26,12 @@ public class DocumentService {
         }
     }
 
+    public int getPageCount(MultipartFile file) throws IOException {
+        try (PDDocument document = PDDocument.load(file.getInputStream())) {
+            return document.getNumberOfPages();
+        }
+    }
+
     public ContractPreviewResponse generatePreview(MultipartFile file) {
         ContractPreviewResponse response = new ContractPreviewResponse();
         try (PDDocument document = PDDocument.load(file.getInputStream())) {

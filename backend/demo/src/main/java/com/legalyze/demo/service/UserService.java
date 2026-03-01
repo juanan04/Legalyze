@@ -46,6 +46,8 @@ public class UserService implements UserDetailsService {
         dto.setId(u.getId());
         dto.setName(u.getName());
         dto.setEmail(u.getEmail());
+        dto.setAgencyName(u.getAgencyName());
+        dto.setJobPosition(u.getJobPosition());
         dto.setProfileImage(u.getProfileImage());
         dto.setCreatedAt(u.getCreatedAt());
         dto.setCredits(u.getCredits());
@@ -53,12 +55,23 @@ public class UserService implements UserDetailsService {
         dto.setFreeAnalysisUsed(u.getFreeAnalysisUsed());
         dto.setEmailVerified(u.getEmailVerified());
         dto.setBetaNoticeAck(u.getBetaNoticeAck());
+        dto.setSubscriptionPlan(u.getSubscriptionPlan() == null ? "FREE" : u.getSubscriptionPlan());
+        dto.setSubscriptionStatus(u.getSubscriptionStatus() == null ? "active" : u.getSubscriptionStatus());
         return dto;
     }
 
-    public UserProfileDto updateProfile(String name, String profileImage) {
+    public UserProfileDto updateProfile(String name, String profileImage, String agencyName, String jobPosition) {
         User u = getCurrentUser();
-        u.setName(name);
+        if (name != null) {
+            u.setName(org.springframework.web.util.HtmlUtils.htmlEscape(name));
+        }
+
+        if (agencyName != null) {
+            u.setAgencyName(org.springframework.web.util.HtmlUtils.htmlEscape(agencyName));
+        }
+        if (jobPosition != null) {
+            u.setJobPosition(jobPosition);
+        }
 
         if (profileImage != null) {
             u.setProfileImage(profileImage);
@@ -85,47 +98,35 @@ public class UserService implements UserDetailsService {
         }
     }
 
-    public boolean consumeAnalysisCredit() {
+    public boolean consumeAnalysisCredit(int creditsRequired) {
         validateUserAccess();
         User u = getCurrentUser();
         boolean usedFree = false;
 
-        if (u.getFreeTrialsRemaining() > 0) {
-            u.setFreeTrialsRemaining(u.getFreeTrialsRemaining() - 1);
+        if (u.getFreeTrialsRemaining() >= creditsRequired) {
+            u.setFreeTrialsRemaining(u.getFreeTrialsRemaining() - creditsRequired);
             usedFree = true;
-            // Sync legacy field just in case
             if (u.getFreeTrialsRemaining() == 0) {
                 u.setFreeAnalysisUsed(true);
             }
         } else {
-            if (u.getCredits() > 0) {
-                u.setCredits(u.getCredits() - 1);
+            if (u.getCredits() >= creditsRequired) {
+                u.setCredits(u.getCredits() - creditsRequired);
             } else {
-                throw new IllegalStateException("NO_CREDITS");
+                throw new IllegalStateException("Payment Required: No tienes créditos suficientes.");
             }
         }
         userRepository.save(u);
         return usedFree;
     }
 
-    public void refundAnalysisCredit(boolean usedFree) {
+    public void refundAnalysisCredit(boolean usedFree, int creditsRefunded) {
         User u = getCurrentUser();
         if (usedFree) {
-            u.setFreeTrialsRemaining(u.getFreeTrialsRemaining() + 1);
+            u.setFreeTrialsRemaining(u.getFreeTrialsRemaining() + creditsRefunded);
             u.setFreeAnalysisUsed(false); // Enable free analysis again if it was the last one
         } else {
-            u.setCredits(u.getCredits() + 1);
-        }
-        userRepository.save(u);
-    }
-
-    public void refundGenerationCredit(boolean usedFree) {
-        User u = getCurrentUser();
-        if (usedFree) {
-            u.setFreeTrialsRemaining(u.getFreeTrialsRemaining() + 1);
-            u.setFreeAnalysisUsed(false);
-        } else {
-            u.setCredits(u.getCredits() + 2); // Generation costs 2 credits
+            u.setCredits(u.getCredits() + creditsRefunded);
         }
         userRepository.save(u);
     }

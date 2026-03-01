@@ -12,8 +12,11 @@ public class ContractAnalysisResponse {
     private String originalFileName;
     private LocalDateTime uploadedAt;
     private String status;
+    private String contractType;
     private String summary;
-    private List<ClauseDto> keyClauses;
-    private List<RiskDto> risks;
+    private Integer healthScore;
+    private String verdict;
+    private List<String> findingsSummary;
+    private List<DetailedAnalysisDto> detailedAnalysis;
 
 }

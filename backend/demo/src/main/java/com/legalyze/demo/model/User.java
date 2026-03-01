@@ -29,6 +29,12 @@ public class User implements UserDetails {
     @Column(nullable = false, unique = true, length = 180)
     private String email;
 
+    @Column(length = 255)
+    private String agencyName;
+
+    @Column(length = 100)
+    private String jobPosition;
+
     @Column(nullable = false)
     private String passwordHash;
 
@@ -42,6 +48,18 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private UserRole role;
+
+    @Column(length = 255)
+    private String stripeCustomerId;
+
+    @Column(length = 255)
+    private String stripeSubscriptionId;
+
+    @Column(length = 50)
+    private String subscriptionStatus;
+
+    @Column(length = 50)
+    private String subscriptionPlan;
 
     @Builder.Default
     @Column(nullable = false)
@@ -92,6 +110,12 @@ public class User implements UserDetails {
         }
         if (betaNoticeAck == null) {
             betaNoticeAck = false;
+        }
+        if (subscriptionPlan == null) {
+            subscriptionPlan = "FREE";
+        }
+        if (subscriptionStatus == null) {
+            subscriptionStatus = "active";
         }
     }
 

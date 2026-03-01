@@ -52,20 +52,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
             }
         }
 
-        // 3. AI Generation
-        else if (path.startsWith("/api/generated-contracts/generate")) {
-            // Limit by IP
-            if (!checkLimit(response, "gen:ip:" + ip, rateLimitConfig.getGenerationIp())) {
-                return;
-            }
-            // Limit by User (if authenticated)
-            if (userId != null) {
-                if (!checkLimit(response, "gen:user:" + userId, rateLimitConfig.getGenerationUser())) {
-                    return;
-                }
-            }
-        }
-
         // 4. AI Analysis
         else if (path.startsWith("/api/contracts/analyze")) {
             // Limit by IP
