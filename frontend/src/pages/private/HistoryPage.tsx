@@ -5,55 +5,36 @@ import { PDFDownloadLink } from "@react-pdf/renderer";
 import { AnalysisReport } from "../../components/analysis/AnalysisReport";
 import { Download, ChevronLeft, ChevronRight, FileText } from "lucide-react";
 
-type ContractType = "GENERATED" | "ANALYZED";
 
-interface ClauseDto {
-    title: string;
-    description: string;
-    clauseText?: string;
-    riskLevel?: string;
+export interface DetailedAnalysis {
+    location: string;
+    originalClause: string;
+    riskDetected: string;
+    proposedWording: string;
+    riskLevel: string;
 }
-
-interface RiskDto {
-    title: string;
-    description: string;
-    severity: string;
-}
-
-// interface GeneratedContractDetail {
-//     id: number;
-//     templateCode: string;
-//     createdAt: string;
-//     generatedText: string;
-//     downloadUrl: string;
-// }
 
 interface AnalyzedContractDetail {
     id: number;
     originalFileName: string;
     uploadedAt: string;
     status: string;
+    contractType?: string;
     summary: string;
-    keyClauses: ClauseDto[];
-    risks: RiskDto[];
+    healthScore: number;
+    verdict: string;
+    findingsSummary: string[];
+    detailedAnalysis: DetailedAnalysis[];
 }
 
-type DetailData = /* GeneratedContractDetail | */ AnalyzedContractDetail;
+type DetailData = AnalyzedContractDetail;
 
 interface HistoryItem {
     id: number;
-    type: ContractType;
     title: string;
     date: string; // ISO string
     status: string;
 }
-
-// interface GeneratedContract {
-//     id: number;
-//     templateCode: string;
-//     templateName: string;
-//     createdAt: string;
-// }
 
 interface AnalyzedContract {
     id: number;
@@ -72,8 +53,6 @@ interface Page<T> {
 }
 
 const HistoryPage = () => {
-    // const [activeTab, setActiveTab] = useState<ContractType>("ANALYZED");
-    const activeTab = "ANALYZED";
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
@@ -86,29 +65,15 @@ const HistoryPage = () => {
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                // if (activeTab === "GENERATED") {
-                //     const res = await api.get<Page<GeneratedContract>>(`/api/generated-contracts?page=${page}&size=10`);
-                //     const items: HistoryItem[] = res.data.content.map((item) => ({
-                //         id: item.id,
-                //         type: "GENERATED",
-                //         title: item.templateName || item.templateCode,
-                //         date: item.createdAt,
-                //         status: "Generado",
-                //     }));
-                //     setHistoryItems(items);
-                //     setTotalPages(res.data.totalPages);
-                // } else {
                 const res = await api.get<Page<AnalyzedContract>>(`/api/contracts/analysis?page=${page}&size=10`);
                 const items: HistoryItem[] = res.data.content.map((item) => ({
                     id: item.id,
-                    type: "ANALYZED",
                     title: item.originalFileName,
                     date: item.uploadedAt,
                     status: item.status === "COMPLETED" ? "Analizado" : item.status,
                 }));
                 setHistoryItems(items);
                 setTotalPages(res.data.totalPages);
-                // }
             } catch (error) {
                 console.error("Error fetching history:", error);
             } finally {
@@ -117,49 +82,21 @@ const HistoryPage = () => {
         };
 
         fetchData();
-    }, [activeTab, page]);
-
-    // const handleTabChange = (tab: ContractType) => {
-    //     setActiveTab(tab);
-    //     setPage(0);
-    // };
+    }, [page]);
 
     const fetchDetails = async (item: HistoryItem) => {
         setSelectedItem(item);
         setDetailLoading(true);
         setDetailData(null);
         try {
-            // if (item.type === "GENERATED") {
-            //     // const res = await api.get(`/api/generated-contracts/${item.id}`);
-            //     // setDetailData(res.data);
-            // } else {
             const res = await api.get(`/api/contracts/analysis/${item.id}`);
             setDetailData(res.data);
-            // }
         } catch (error) {
             console.error("Error fetching details:", error);
         } finally {
             setDetailLoading(false);
         }
     };
-
-    // const handleDownloadWord = async (contractId: number, fileName: string) => {
-    //     try {
-    //         const response = await api.get(`/api/generated-contracts/${contractId}/download`, {
-    //             responseType: 'blob',
-    //         });
-
-    //         const url = window.URL.createObjectURL(new Blob([response.data]));
-    //         const link = document.createElement('a');
-    //         link.href = url;
-    //         link.setAttribute('download', `${fileName}.docx`);
-    //         document.body.appendChild(link);
-    //         link.click();
-    //         link.parentNode?.removeChild(link);
-    //     } catch (error) {
-    //         console.error("Error downloading contract:", error);
-    //     }
-    // };
 
     const closeModal = () => {
         setSelectedItem(null);
@@ -186,30 +123,6 @@ const HistoryPage = () => {
                     </h2>
                 </header>
 
-                {/* Tabs */}
-                {/* <div className="flex space-x-1 rounded-xl bg-slate-900/50 p-1 mb-6 w-fit border border-slate-800">
-                    <button
-                        onClick={() => handleTabChange("GENERATED")}
-                        className={`w-full rounded-lg py-2.5 px-6 text-sm font-medium leading-5 transition-all
-                            ${activeTab === "GENERATED"
-                                ? "bg-blue-600 text-white shadow-lg"
-                                : "text-slate-400 hover:bg-slate-800 hover:text-white"
-                            }`}
-                    >
-                        Generados
-                    </button>
-                    <button
-                        onClick={() => handleTabChange("ANALYZED")}
-                        className={`w-full rounded-lg py-2.5 px-6 text-sm font-medium leading-5 transition-all
-                            ${activeTab === "ANALYZED"
-                                ? "bg-blue-600 text-white shadow-lg"
-                                : "text-slate-400 hover:bg-slate-800 hover:text-white"
-                            }`}
-                    >
-                        Analizados
-                    </button>
-                </div> */}
-
                 {/* Lista de contratos */}
                 {isLoading ? (
                     <div className="text-center text-slate-400 py-10">Cargando historial...</div>
@@ -217,7 +130,7 @@ const HistoryPage = () => {
                     <div className="space-y-4">
                         {historyItems.map((contract) => (
                             <div
-                                key={`${contract.type}-${contract.id}`}
+                                key={contract.id}
                                 className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 grid grid-cols-1 md:grid-cols-4 gap-4 items-center hover:border-slate-700 transition-colors"
                             >
                                 <div className="md:col-span-2">
@@ -326,108 +239,99 @@ const HistoryPage = () => {
                                             </p>
                                             <p className="text-slate-300">
                                                 <span className="font-medium text-slate-500">Tipo:</span>{" "}
-                                                Analizado
+                                                {detailData.contractType ? detailData.contractType : "Documento Analizado"}
                                             </p>
                                         </div>
 
-                                        {/* {selectedItem.type === "GENERATED" && (
+                                        <div>
+                                            <div className="flex justify-end">
+                                                <PDFDownloadLink
+                                                    document={
+                                                        <AnalysisReport
+                                                            result={detailData as AnalyzedContractDetail}
+                                                        />
+                                                    }
+                                                    fileName={`reporte-${(detailData as AnalyzedContractDetail).originalFileName}.pdf`}
+                                                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors cursor-pointer"
+                                                >
+                                                    {({ loading }) => (
+                                                        <>
+                                                            <Download className="w-4 h-4" />
+                                                            {loading ? 'Generando...' : 'Descargar Reporte PDF'}
+                                                        </>
+                                                    )}
+                                                </PDFDownloadLink>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col items-center justify-center">
+                                                    <h4 className="text-sm font-semibold text-slate-300 mb-2 text-center w-full border-b border-slate-700 pb-2">Salud Legal</h4>
+                                                    <span className={`text-4xl font-bold mt-2 ${(detailData.healthScore || 0) >= 80 ? 'text-green-500' :
+                                                        (detailData.healthScore || 0) >= 50 ? 'text-yellow-500' : 'text-red-500'
+                                                        }`}>
+                                                        {detailData.healthScore || 0}%
+                                                    </span>
+                                                </div>
+                                                <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                                                    <h4 className="text-sm font-semibold text-slate-300 mb-2 border-b border-slate-700 pb-2">Veredicto</h4>
+                                                    <p className="text-sm text-slate-200 mt-2 font-medium">{detailData.verdict}</p>
+                                                </div>
+                                            </div>
+
                                             <div>
                                                 <h4 className="text-sm font-semibold text-blue-400 mb-2">
-                                                    Contenido Generado
+                                                    Resumen General
                                                 </h4>
-                                                <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 text-sm text-slate-300 whitespace-pre-wrap max-h-96 overflow-y-auto font-serif">
-                                                    {(detailData as GeneratedContractDetail).generatedText}
-                                                </div>
-                                                {(detailData as GeneratedContractDetail).downloadUrl && (
-                                                    <div className="mt-4 flex justify-end">
-                                                        <button
-                                                            onClick={() => handleDownloadWord((detailData as GeneratedContractDetail).id, selectedItem.title)}
-                                                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors cursor-pointer"
-                                                        >
-                                                            <Download className="w-4 h-4" />
-                                                            Descargar Word
-                                                        </button>
-                                                    </div>
-                                                )}
+                                                <p className="text-slate-300 text-sm leading-relaxed bg-slate-800 p-4 rounded-xl border border-slate-700">
+                                                    {(detailData as AnalyzedContractDetail).summary}
+                                                </p>
                                             </div>
-                                        )} */}
 
-                                        {selectedItem.type === "ANALYZED" && (
-                                            <div className="space-y-6">
-                                                <div className="flex justify-end">
-                                                    <PDFDownloadLink
-                                                        document={
-                                                            <AnalysisReport
-                                                                result={{
-                                                                    ...detailData as AnalyzedContractDetail,
-                                                                    keyClauses: (detailData as AnalyzedContractDetail).keyClauses.map(c => ({
-                                                                        ...c,
-                                                                        clauseText: c.clauseText || "",
-                                                                        riskLevel: c.riskLevel || "LOW"
-                                                                    }))
-                                                                }}
-                                                            />
-                                                        }
-                                                        fileName={`reporte-${(detailData as AnalyzedContractDetail).originalFileName}.pdf`}
-                                                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors cursor-pointer"
-                                                    >
-                                                        {({ loading }) => (
-                                                            <>
-                                                                <Download className="w-4 h-4" />
-                                                                {loading ? 'Generando...' : 'Descargar Reporte PDF'}
-                                                            </>
-                                                        )}
-                                                    </PDFDownloadLink>
-                                                </div>
-
+                                            {(detailData as AnalyzedContractDetail).findingsSummary && (detailData as AnalyzedContractDetail).findingsSummary.length > 0 && (
                                                 <div>
                                                     <h4 className="text-sm font-semibold text-blue-400 mb-2">
-                                                        Resumen
+                                                        Resumen de Hallazgos
                                                     </h4>
-                                                    <p className="text-slate-300 text-sm leading-relaxed">
-                                                        {(detailData as AnalyzedContractDetail).summary}
-                                                    </p>
+                                                    <ul className="space-y-2">
+                                                        {(detailData as AnalyzedContractDetail).findingsSummary.map((finding, idx) => (
+                                                            <li key={idx} className="bg-slate-800 border border-slate-700 rounded-lg p-3 flex gap-3 text-sm text-slate-300">
+                                                                <span className="text-blue-500 font-bold">✓</span> {finding}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
                                                 </div>
+                                            )}
 
-                                                {(detailData as AnalyzedContractDetail).risks && (detailData as AnalyzedContractDetail).risks.length > 0 && (
-                                                    <div>
-                                                        <h4 className="text-sm font-semibold text-red-400 mb-2">
-                                                            Riesgos Detectados
-                                                        </h4>
-                                                        <ul className="space-y-2">
-                                                            {(detailData as AnalyzedContractDetail).risks.map((risk, idx) => (
-                                                                <li key={idx} className="bg-red-900/20 border border-red-900/50 rounded-lg p-3">
-                                                                    <p className="text-red-200 font-medium text-sm">{risk.title}</p>
-                                                                    <p className="text-red-300/80 text-xs mt-1">{risk.description}</p>
-                                                                    <p className="text-red-400/60 text-xs mt-1">Severidad: {risk.severity}</p>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                )}
-
-                                                {(detailData as AnalyzedContractDetail).keyClauses && (detailData as AnalyzedContractDetail).keyClauses.length > 0 && (
-                                                    <div>
-                                                        <h4 className="text-sm font-semibold text-yellow-400 mb-2">
-                                                            Letra Pequeña / Cláusulas Clave
-                                                        </h4>
-                                                        <ul className="space-y-2">
-                                                            {(detailData as AnalyzedContractDetail).keyClauses.map((clause, idx) => (
-                                                                <li key={idx} className="bg-yellow-900/20 border border-yellow-900/50 rounded-lg p-3">
-                                                                    <p className="text-yellow-200 font-medium text-sm">{clause.title}</p>
-                                                                    <p className="text-yellow-300/80 text-xs mt-1">{clause.description}</p>
-                                                                    {clause.clauseText && (
-                                                                        <p className="text-slate-400 text-xs mt-2 italic border-l-2 border-slate-600 pl-2">
-                                                                            "{clause.clauseText}"
-                                                                        </p>
-                                                                    )}
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
+                                            {(detailData as AnalyzedContractDetail).detailedAnalysis && (detailData as AnalyzedContractDetail).detailedAnalysis.length > 0 && (
+                                                <div>
+                                                    <h4 className="text-sm font-semibold text-blue-400 mb-2">
+                                                        Análisis Detallado
+                                                    </h4>
+                                                    <ul className="space-y-4">
+                                                        {(detailData as AnalyzedContractDetail).detailedAnalysis.map((detail, idx) => (
+                                                            <li key={idx} className={`border rounded-xl p-4 flex flex-col gap-2 ${detail.riskLevel?.toUpperCase() === 'CRÍTICO' ? 'bg-red-900/10 border-red-900/50' : 'bg-slate-800 border-slate-700'}`}>
+                                                                <div className="flex justify-between items-start">
+                                                                    <span className="text-xs font-semibold bg-slate-700 text-white px-2 py-1 rounded">{detail.location}</span>
+                                                                    <span className={`text-xs font-bold px-2 py-1 rounded ${detail.riskLevel?.toUpperCase() === 'CRÍTICO' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-500'}`}>{detail.riskLevel}</span>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs text-slate-500">Cláusula Original:</p>
+                                                                    <p className="text-sm text-slate-300 italic">"{detail.originalClause}"</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs text-slate-500">Riesgo Detectado:</p>
+                                                                    <p className="text-sm text-slate-200">{detail.riskDetected}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs text-blue-400/80">Propuesta:</p>
+                                                                    <p className="text-sm text-blue-200/90">{detail.proposedWording}</p>
+                                                                </div>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="text-center text-red-400">

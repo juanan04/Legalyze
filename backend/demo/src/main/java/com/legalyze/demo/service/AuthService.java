@@ -26,8 +26,18 @@ public class AuthService {
     private final JwtService jwtService;
     private final EmailService emailService;
 
-    private final java.util.Set<String> DISPOSABLE_DOMAINS = java.util.Set.of(
-            "yopmail.com", "tempmail.com", "guerrillamail.com", "10minutemail.com", "mailinator.com");
+    private final java.util.Set<String> DISPOSABLE_DOMAINS = new java.util.HashSet<>(java.util.Arrays.asList(
+            "10minutemail.com", "10minutemail.net", "10minutemail.org", "10mail.org", "burnermail.io",
+            "dispostable.com", "dodgeit.com", "dropmail.me", "emailondeck.com", "fakeinbox.com",
+            "generator.email", "getairmail.com", "getnada.com", "grr.la", "guerrillamail.com",
+            "guerrillamail.net", "guerrillamail.org", "harakirimail.com", "inboxkitten.com",
+            "jetable.org", "mailcatch.com", "mailinator.com", "mailinator.net", "mailnesia.com",
+            "mailo.com", "mailexpire.com", "mintemail.com", "minuteinbox.com", "moakt.com",
+            "mohmal.com", "mytrashmail.com", "nada.ltd", "sharklasers.com", "sneakemail.com",
+            "spam4.me", "spambox.us", "spamex.com", "spamfence.net", "spamfree24.org",
+            "spamgourmet.com", "suremail.info", "tempm.com", "tempmail.com", "tempmail.net",
+            "temp-mail.org", "temp-mail.com", "tempail.com", "tempmailaddress.com",
+            "throwawaymail.com", "trashmail.com", "trashmail.net", "yopmail.com", "bultoc.com"));
 
     private boolean isDisposableEmail(String email) {
         String domain = email.substring(email.indexOf("@") + 1).toLowerCase();
@@ -55,6 +65,8 @@ public class AuthService {
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
+                .agencyName(request.getAgencyName())
+                .jobPosition(request.getJobPosition())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(UserRole.USER)
                 .credits(0)
@@ -69,11 +81,20 @@ public class AuthService {
         log.debug("User saved with ID: {}", user.getId());
 
         // Send verification email
-        // Send verification email
         try {
             emailService.sendVerificationEmail(user.getEmail(), verificationToken);
         } catch (Exception e) {
             log.error("Failed to send email: {}", e.getMessage());
+        }
+
+        // Notify Admin of new Lead
+        try {
+            String adminSubject = "¡Nuevo Registro en Legalyze!";
+            String adminContent = String.format("Se ha registrado <b>%s</b> de la agencia <b>%s</b> como <b>%s</b>.",
+                    user.getName(), user.getAgencyName(), user.getJobPosition());
+            emailService.sendAdminNotification(adminSubject, adminContent);
+        } catch (Exception e) {
+            log.error("Failed to send admin notification: {}", e.getMessage());
         }
 
         String token = jwtService.generateToken(user);
@@ -108,6 +129,8 @@ public class AuthService {
         userDto.setId(user.getId());
         userDto.setName(user.getName());
         userDto.setEmail(user.getEmail());
+        userDto.setAgencyName(user.getAgencyName());
+        userDto.setJobPosition(user.getJobPosition());
         userDto.setProfileImage(user.getProfileImage());
         userDto.setCredits(user.getCredits());
         userDto.setFreeTrialsRemaining(user.getFreeTrialsRemaining());

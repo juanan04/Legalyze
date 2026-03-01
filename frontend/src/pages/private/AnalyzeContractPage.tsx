@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, type ChangeEvent, type DragEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import DashboardLayout from "../../components/layout/DashboardLayout";
-import AccordionCard from "../../components/common/AccordionCard";
 import { api } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 import { Lock, Upload, FileText, AlertCircle, X, FileSearch, Zap, Download, CheckCircle } from "lucide-react";
@@ -48,6 +47,7 @@ const normalizeText = (text: string) => {
 const AnalyzeContractPage = () => {
     const { user, updateUser } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [file, setFile] = useState<File | null>(null);
@@ -71,13 +71,11 @@ const AnalyzeContractPage = () => {
             // Collect all quotes to search
             const quotesToSearch: { text: string, id: string }[] = [];
 
-            analysisResult.risks.forEach((risk, idx) => {
-                if (risk.quote) quotesToSearch.push({ text: risk.quote, id: `risk-${idx}` });
-            });
-
-            analysisResult.keyClauses.forEach((clause, idx) => {
-                if (clause.clauseText) quotesToSearch.push({ text: clause.clauseText, id: `clause-${idx}` });
-            });
+            if (analysisResult.detailedAnalysis) {
+                analysisResult.detailedAnalysis.forEach((detail, idx) => {
+                    if (detail.originalClause) quotesToSearch.push({ text: detail.originalClause, id: `clause-${idx}` });
+                });
+            }
 
             // Search pages
             for (let i = 1; i <= pdf.numPages; i++) {
@@ -149,6 +147,14 @@ const AnalyzeContractPage = () => {
 
         scanPdfForQuotes();
     }, [analysisResult, file]);
+
+    useEffect(() => {
+        if (location.state?.pendingFile && !file) {
+            validateAndUpload(location.state.pendingFile);
+            // Clear the state so it doesn't re-trigger on refresh
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state, file]);
 
     const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
         e.preventDefault();
@@ -530,23 +536,29 @@ const AnalyzeContractPage = () => {
                                         </div>
                                     )}
 
-                                    <div className="pt-4 flex flex-col sm:flex-row gap-4">
-                                        <button
-                                            onClick={handleAnalyze}
-                                            className="flex-1 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg shadow-blue-900/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
-                                        >
-                                            <Zap className="w-5 h-5" />
-                                            Analizar con IA (1 Crédito)
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setPreviewResult(null);
-                                                setFile(null);
-                                            }}
-                                            className="px-6 py-3 text-slate-400 hover:text-white transition-colors"
-                                        >
-                                            Cancelar
-                                        </button>
+                                    <div className="pt-4 flex flex-col gap-4">
+                                        <div className="bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 p-4 rounded-lg flex items-center gap-3 text-sm">
+                                            <AlertCircle className="w-5 h-5 shrink-0" />
+                                            <p>Este documento de <strong>{previewResult.pageCount}</strong> páginas consumirá <strong>{previewResult.pageCount > 50 ? 5 : previewResult.pageCount >= 16 ? 3 : 1}</strong> crédito(s) de tu plan.</p>
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row gap-4">
+                                            <button
+                                                onClick={handleAnalyze}
+                                                className="flex-1 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg shadow-blue-900/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                            >
+                                                <Zap className="w-5 h-5" />
+                                                Analizar con IA ({previewResult.pageCount > 50 ? 5 : previewResult.pageCount >= 16 ? 3 : 1} Créditos)
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setPreviewResult(null);
+                                                    setFile(null);
+                                                }}
+                                                className="px-6 py-3 text-slate-400 hover:text-white transition-colors"
+                                            >
+                                                Cancelar
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </section>
@@ -557,94 +569,98 @@ const AnalyzeContractPage = () => {
                 {/* Split View Results */}
                 {analysisResult && file && (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full overflow-hidden">
-                        {/* Left Column: Analysis */}
-                        <div className="flex flex-col gap-4 overflow-y-auto pr-2 pb-20">
-                            {/* Resumen general */}
-                            <AccordionCard
-                                title="Resumen general"
-                                colorVariant="success"
-                                defaultOpen
-                                icon={
-                                    <div className="w-8 h-8 rounded-full bg-emerald-900/40 flex items-center justify-center">
-                                        <span className="text-sm text-emerald-400">✔</span>
+                        <div className="flex flex-col gap-6 overflow-y-auto pr-2 pb-20">
+                            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 text-center">
+                                <h3 className="text-xl font-bold text-white mb-4">Salud Legal</h3>
+                                <div className="relative w-32 h-32 mx-auto mb-4">
+                                    <svg viewBox="0 0 36 36" className="w-full h-full">
+                                        <path
+                                            className="text-slate-700"
+                                            strokeWidth="4"
+                                            stroke="currentColor"
+                                            fill="none"
+                                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                        />
+                                        <path
+                                            className={
+                                                (analysisResult.healthScore || 0) >= 80 ? "text-green-500" :
+                                                    (analysisResult.healthScore || 0) >= 50 ? "text-yellow-500" : "text-red-500"
+                                            }
+                                            strokeWidth="4"
+                                            strokeDasharray={`${analysisResult.healthScore || 0}, 100`}
+                                            stroke="currentColor"
+                                            fill="none"
+                                            strokeLinecap="round"
+                                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                        />
+                                    </svg>
+                                    <div className="absolute inset-0 flex items-center justify-center flex-col">
+                                        <span className="text-3xl font-bold text-white">{analysisResult.healthScore || 0}%</span>
                                     </div>
-                                }
-                            >
-                                {analysisResult.summary}
-                            </AccordionCard>
+                                </div>
+                                <div className="bg-slate-900 border border-slate-700 p-4 rounded-lg mt-4">
+                                    <p className="text-lg font-semibold text-slate-200">{analysisResult.verdict || "Análisis completado"}</p>
+                                </div>
+                            </div>
 
-                            {/* Riesgos detectados */}
-                            <AccordionCard
-                                title="Riesgos detectados"
-                                colorVariant="danger"
-                                defaultOpen
-                                icon={
-                                    <div className="w-8 h-8 rounded-full bg-red-900 flex items-center justify-center">
-                                        <span className="text-sm text-red-400">⚠</span>
-                                    </div>
-                                }
-                            >
+                            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                                <h3 className="font-bold text-blue-400 mb-3 uppercase tracking-wider text-sm">Tipo de Contrato Detectado</h3>
+                                <p className="text-slate-200 text-lg font-semibold">{analysisResult.contractType || "Contrato de Arrendamiento"}</p>
+                            </div>
+
+                            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                                <h3 className="font-bold text-blue-400 mb-3 uppercase tracking-wider text-sm">Resumen General</h3>
+                                <p className="text-slate-300 text-sm leading-relaxed">{analysisResult.summary}</p>
+                            </div>
+
+                            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                                <h3 className="font-bold text-blue-400 mb-4 uppercase tracking-wider text-sm">Resumen de Hallazgos</h3>
+                                <ul className="space-y-3">
+                                    {(analysisResult.findingsSummary || []).map((finding, idx) => (
+                                        <li key={idx} className="flex items-start gap-3 bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+                                            <span className="text-blue-500 mt-0.5">✔</span>
+                                            <span className="text-slate-300 text-sm">{finding}</span>
+                                        </li>
+                                    ))}
+                                    {(!analysisResult.findingsSummary || analysisResult.findingsSummary.length === 0) && (
+                                        <p className="text-slate-400 text-sm">No se documentaron hallazgos específicos.</p>
+                                    )}
+                                </ul>
+                            </div>
+
+                            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                                <h3 className="font-bold text-blue-400 mb-4 uppercase tracking-wider text-sm">Análisis Detallado</h3>
                                 <div className="space-y-4">
-                                    {analysisResult.risks && analysisResult.risks.length > 0 ? (
-                                        analysisResult.risks.map((risk, index) => (
-                                            <div key={index} className="border-b border-slate-700 pb-4 last:border-0 last:pb-0">
-                                                <div className="flex justify-between items-start gap-2">
-                                                    <h4 className="font-semibold text-red-300">{risk.title} ({risk.severity})</h4>
-                                                    {risk.quote && pageLocations[risk.quote] && (
-                                                        <span className="text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded">
-                                                            Pág. {pageLocations[risk.quote].page}{pageLocations[risk.quote].line ? `, Lín. ${pageLocations[risk.quote].line}` : ''}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <p className="text-sm text-slate-400 mt-1">{risk.description}</p>
-                                                {risk.quote && pageLocations[risk.quote]?.originalText && (
-                                                    <div className="mt-2 p-2 bg-slate-800/50 rounded text-xs text-slate-400 italic border-l-2 border-red-500">
-                                                        "{pageLocations[risk.quote].originalText}"
-                                                    </div>
-                                                )}
+                                    {(analysisResult.detailedAnalysis || []).map((detail, idx) => (
+                                        <div key={idx} className={`p-4 rounded-lg border flex flex-col gap-3 ${detail.riskLevel?.toUpperCase() === 'CRÍTICO' ? 'bg-red-900/20 border-red-500/30' : 'bg-slate-900/50 border-slate-700'}`}>
+                                            <div className="flex justify-between items-start">
+                                                <span className="bg-slate-700 text-white text-xs px-2 py-1 rounded font-medium">{detail.location}</span>
+                                                <span className={`text-xs font-bold px-2 py-1 rounded ${detail.riskLevel?.toUpperCase() === 'CRÍTICO' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-500'}`}>{detail.riskLevel}</span>
                                             </div>
-                                        ))
-                                    ) : (
-                                        <p className="text-sm text-slate-400">No se detectaron riesgos.</p>
+                                            <div>
+                                                <p className="text-xs text-slate-500 mb-1">Cláusula Original (Extracto):</p>
+                                                <p className="text-sm text-slate-300 italic border-l-2 border-slate-600 pl-3 py-1">"{detail.originalClause}"</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-slate-500 mb-1">Riesgo Detectado:</p>
+                                                <p className="text-sm text-slate-200">{detail.riskDetected}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-blue-400/80 mb-1">Propuesta de Redacción:</p>
+                                                <p className="text-sm text-blue-200/90">{detail.proposedWording}</p>
+                                            </div>
+                                            {pageLocations[detail.originalClause] && (
+                                                <div className="mt-2 text-xs text-slate-500">
+                                                    Pág. {pageLocations[detail.originalClause].page}{pageLocations[detail.originalClause].line ? `, Lín. ${pageLocations[detail.originalClause].line}` : ''}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                    {(!analysisResult.detailedAnalysis || analysisResult.detailedAnalysis.length === 0) && (
+                                        <p className="text-sm text-slate-400">No se encontraron cláusulas para analizar en detalle.</p>
                                     )}
                                 </div>
-                            </AccordionCard>
-
-                            {/* Letra pequeña */}
-                            <AccordionCard
-                                title="Cláusulas Importantes"
-                                colorVariant="warning"
-                                icon={
-                                    <div className="w-8 h-8 rounded-full bg-amber-900/40 flex items-center justify-center">
-                                        <span className="text-sm text-amber-400">!</span>
-                                    </div>
-                                }
-                            >
-                                <div className="space-y-4">
-                                    {analysisResult.keyClauses && analysisResult.keyClauses.length > 0 ? (
-                                        analysisResult.keyClauses.map((clause, index) => (
-                                            <div key={index} className="border-b border-slate-700 pb-4 last:border-0 last:pb-0">
-                                                <div className="flex justify-between items-start gap-2">
-                                                    <h4 className="font-semibold text-slate-200">{clause.title}</h4>
-                                                    {clause.clauseText && pageLocations[clause.clauseText] && (
-                                                        <span className="text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded">
-                                                            Pág. {pageLocations[clause.clauseText].page}{pageLocations[clause.clauseText].line ? `, Lín. ${pageLocations[clause.clauseText].line}` : ''}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <p className="text-sm text-slate-400 mt-1">{clause.description}</p>
-                                                {clause.clauseText && (
-                                                    <div className="mt-2 p-2 bg-slate-800/50 rounded text-xs text-slate-400 italic border-l-2 border-amber-500">
-                                                        "{pageLocations[clause.clauseText]?.originalText || clause.clauseText}"
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <p className="text-sm text-slate-400">No se encontraron cláusulas importantes.</p>
-                                    )}
-                                </div>
-                            </AccordionCard>
+                            </div>
                         </div>
 
                         {/* Right Column: PDF Viewer */}

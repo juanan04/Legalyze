@@ -4,7 +4,6 @@ import { useAuth } from "../../context/AuthContext";
 import {
     LayoutDashboard,
     Search,
-    // FileText,
     Clock,
     User,
     LogOut,
@@ -70,15 +69,6 @@ const MobileNavbar = () => {
                             <Search className="w-5 h-5" />
                             <span>Analizar contrato</span>
                         </NavLink>
-
-                        {/* <NavLink
-                            to="/contracts/generate"
-                            onClick={() => setIsOpen(false)}
-                            className={({ isActive }) => `${navItemBase} ${isActive ? navItemActive : navItemInactive}`}
-                        >
-                            <FileText className="w-5 h-5" />
-                            <span>Generar contrato</span>
-                        </NavLink> */}
 
                         <NavLink
                             to="/history"

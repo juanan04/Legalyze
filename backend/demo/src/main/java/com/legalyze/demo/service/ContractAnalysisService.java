@@ -10,10 +10,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.legalyze.demo.dto.ClauseDto;
 import com.legalyze.demo.dto.ContractAnalysisListItemDto;
 import com.legalyze.demo.dto.ContractAnalysisResponse;
-import com.legalyze.demo.dto.RiskDto;
 import com.legalyze.demo.model.AnalysisStatus;
 import com.legalyze.demo.model.ContractAnalysis;
 import com.legalyze.demo.model.User;
@@ -29,21 +27,42 @@ public class ContractAnalysisService {
     private final AIServiceFactory aiServiceFactory;
     private final UserService userService;
     private final DocumentService documentService;
+    private final EmailService emailService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
     @Value("${ai.provider}")
     private String aiProvider;
 
     public ContractAnalysisResponse analyze(MultipartFile file) {
-        // 0. Check and consume credits
-        User user = userService.getCurrentUser();
-        if (user.getCredits() <= 0 && !user.getFreeAnalysisUsed()) {
-            // Allow if it's the first free analysis (logic might need adjustment based on
-            // requirements)
-            // For now assuming free analysis is handled via credits or specific flag
+        // 0.1 Validate File Type
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.equals("application/pdf")) {
+            throw new IllegalArgumentException("Invalid file type. Solo están permitidos archivos PDF.");
         }
 
-        boolean usedFree = userService.consumeAnalysisCredit();
+        int pageCount = 1;
+        try {
+            pageCount = documentService.getPageCount(file);
+        } catch (Exception e) {
+            throw new RuntimeException("Error reading document format. Archivo dañado o ilegible.", e);
+        }
+
+        // Calculate credit cost
+        int requiredCredits = 1;
+        if (pageCount >= 16 && pageCount <= 50) {
+            requiredCredits = 3;
+        } else if (pageCount > 50) {
+            requiredCredits = 5;
+        }
+
+        // 0. Check and consume credits
+        User user = userService.getCurrentUser();
+        if (user.getFreeTrialsRemaining() == 0 && user.getCredits() < requiredCredits) {
+            throw new IllegalStateException(
+                    "Payment Required: No tienes créditos suficientes. Coste: " + requiredCredits + " créditos.");
+        }
+
+        boolean usedFree = userService.consumeAnalysisCredit(requiredCredits);
 
         // Enforce history limit (max 30)
         long count = contractAnalysisRepository.countByUser(user);
@@ -52,13 +71,6 @@ public class ContractAnalysisService {
             if (oldest != null) {
                 contractAnalysisRepository.delete(oldest);
             }
-        }
-
-        // 0.1 Validate File Type
-        String contentType = file.getContentType();
-        if (contentType == null || (!contentType.equals("application/pdf")
-                && !contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document"))) {
-            throw new IllegalArgumentException("Invalid file type. Only PDF and DOCX are allowed.");
         }
 
         try {
@@ -74,15 +86,28 @@ public class ContractAnalysisService {
                     .originalFileName(file.getOriginalFilename())
                     .uploadedAt(LocalDateTime.now())
                     .status(AnalysisStatus.COMPLETED)
+                    .contractType(aiResponse.getContractType())
                     .summary(aiResponse.getSummary())
-                    .keyClausesJson(objectMapper.writeValueAsString(aiResponse.getKeyClauses()))
-                    .risksJson(objectMapper.writeValueAsString(aiResponse.getRisks()))
-                    .risksJson(objectMapper.writeValueAsString(aiResponse.getRisks()))
+                    .healthScore(aiResponse.getHealthScore())
+                    .verdict(aiResponse.getVerdict())
+                    .findingsSummaryJson(objectMapper.writeValueAsString(aiResponse.getFindingsSummary()))
+                    .detailedAnalysisJson(objectMapper.writeValueAsString(aiResponse.getDetailedAnalysis()))
                     .llmModelUsed("GEMINI".equalsIgnoreCase(aiProvider) ? "gemini-1.5-flash" : "gpt-4o-mini")
                     .user(user)
                     .build();
 
             analysis = contractAnalysisRepository.save(analysis);
+
+            // Notify admin
+            try {
+                String subject = "¡Nuevo Lead Evaluando Contrato!";
+                String content = String.format(
+                        "Aviso: <b>%s</b> de la agencia <b>%s</b> ha analizado un contrato. Salud Legal detectada: <b>%d%%</b>",
+                        user.getName(), user.getAgencyName(), aiResponse.getHealthScore());
+                emailService.sendAdminNotification(subject, content);
+            } catch (Exception e) {
+                // Ignore exception to not block flow
+            }
 
             // 4. Return response with ID
             aiResponse.setId(analysis.getId());
@@ -93,7 +118,7 @@ public class ContractAnalysisService {
             return aiResponse;
 
         } catch (Exception e) {
-            userService.refundAnalysisCredit(usedFree);
+            userService.refundAnalysisCredit(usedFree, requiredCredits);
             throw new RuntimeException("Error analyzing contract", e);
         }
     }
@@ -130,20 +155,24 @@ public class ContractAnalysisService {
         resp.setOriginalFileName(a.getOriginalFileName());
         resp.setUploadedAt(a.getUploadedAt());
         resp.setStatus(a.getStatus().name());
+        resp.setContractType(a.getContractType());
         resp.setSummary(a.getSummary());
+        resp.setHealthScore(a.getHealthScore());
+        resp.setVerdict(a.getVerdict());
 
         try {
-            if (a.getKeyClausesJson() != null) {
-                List<ClauseDto> clauses = objectMapper.readValue(
-                        a.getKeyClausesJson(),
-                        objectMapper.getTypeFactory().constructCollectionType(List.class, ClauseDto.class));
-                resp.setKeyClauses(clauses);
+            if (a.getFindingsSummaryJson() != null) {
+                List<String> findings = objectMapper.readValue(
+                        a.getFindingsSummaryJson(),
+                        objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
+                resp.setFindingsSummary(findings);
             }
-            if (a.getRisksJson() != null) {
-                List<RiskDto> risks = objectMapper.readValue(
-                        a.getRisksJson(),
-                        objectMapper.getTypeFactory().constructCollectionType(List.class, RiskDto.class));
-                resp.setRisks(risks);
+            if (a.getDetailedAnalysisJson() != null) {
+                List<com.legalyze.demo.dto.DetailedAnalysisDto> details = objectMapper.readValue(
+                        a.getDetailedAnalysisJson(),
+                        objectMapper.getTypeFactory().constructCollectionType(List.class,
+                                com.legalyze.demo.dto.DetailedAnalysisDto.class));
+                resp.setDetailedAnalysis(details);
             }
         } catch (Exception e) {
             // Log error but return what we have

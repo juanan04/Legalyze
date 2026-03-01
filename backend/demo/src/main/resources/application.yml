@@ -24,6 +24,11 @@ spring:
       max-file-size: 15MB
       max-request-size: 15MB
 
+  web:
+    error:
+      include-stacktrace: never
+      include-message: always
+
 server:
   port: 8080
 

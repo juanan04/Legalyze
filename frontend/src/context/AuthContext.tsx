@@ -15,12 +15,16 @@ export type User = {
     id: number;
     name: string;
     email: string;
+    agencyName?: string;
+    jobPosition?: string;
     profileImage?: string;
     credits: number;
     freeTrialsRemaining: number;
     freeAnalysisUsed: boolean;
     emailVerified: boolean;
     betaNoticeAck?: boolean;
+    subscriptionPlan?: string;
+    subscriptionStatus?: string;
 };
 
 type AuthContextValue = {

@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "../context/AuthContext";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicLayout from "../components/layout/PublicLayout";
+import LandingLayout from "../components/layout/LandingLayout";
 
 // Lazy Loading de páginas
 const LoginPage = lazy(() => import("../pages/auth/LoginPage"));
@@ -14,7 +15,7 @@ const NotFoundPage = lazy(() => import("../pages/public/NotFoundPage"));
 
 const DashboardPage = lazy(() => import("../pages/private/DashboardPage"));
 const AnalyzeContractPage = lazy(() => import("../pages/private/AnalyzeContractPage"));
-// const GenerateContractPage = lazy(() => import("../pages/private/GenerateContractPage"));
+
 const HistoryPage = lazy(() => import("../pages/private/HistoryPage"));
 const ProfilePage = lazy(() => import("../pages/private/ProfilePage"));
 const PricingPage = lazy(() => import("../pages/private/PricingPage"));
@@ -37,9 +38,13 @@ const AppRouter = () => (
         <AuthProvider>
             <Suspense fallback={<PageLoader />}>
                 <Routes>
-                    {/* Rutas Públicas con Layout */}
-                    <Route element={<PublicLayout />}>
+                    {/* Rutas Públicas con Layout Completo */}
+                    <Route element={<LandingLayout />}>
                         <Route path="/" element={<LandingPage />} />
+                    </Route>
+
+                    {/* Rutas Públicas Minimalistas (Auth & Legal) */}
+                    <Route element={<PublicLayout />}>
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/register" element={<RegisterPage />} />
                         <Route path="/verify-email" element={<VerifyEmailPage />} />
@@ -55,7 +60,7 @@ const AppRouter = () => (
                     <Route element={<ProtectedRoute />}>
                         <Route path="/dashboard" element={<DashboardPage />} />
                         <Route path="/contracts/analyze" element={<AnalyzeContractPage />} />
-                        {/* <Route path="/contracts/generate" element={<GenerateContractPage />} /> */}
+
                         <Route path="/history" element={<HistoryPage />} />
                         <Route path="/profile" element={<ProfilePage />} />
                         <Route path="/pricing" element={<PricingPage />} />

@@ -5,18 +5,13 @@ import { useAuth } from "../../context/AuthContext";
 import { api } from "../../lib/api";
 import {
     FileText,
-    // Plus,
-    Package,
     Clock,
-    User
+    User,
+    UploadCloud,
+    ArrowRight,
+    Sparkles,
+    CheckCircle2
 } from "lucide-react";
-
-// interface GeneratedContract {
-//     id: number;
-//     templateCode: string;
-//     templateName: string;
-//     createdAt: string;
-// }
 
 interface AnalyzedContract {
     id: number;
@@ -28,7 +23,7 @@ interface AnalyzedContract {
 
 interface ActivityItem {
     id: number;
-    type: "GENERATED" | "ANALYZED";
+    type: "ANALYZED";
     title: string;
     date: string;
     status: string;
@@ -71,20 +66,9 @@ const DashboardPage = () => {
         const fetchActivity = async () => {
             setIsLoading(true);
             try {
-                // Solo obtenemos análisis, ignoramos generación por ahora
                 const [analyzedRes] = await Promise.all([
-                    // api.get<{ content: GeneratedContract[] }>("/api/generated-contracts"),
                     api.get<{ content: AnalyzedContract[] }>("/api/contracts/analysis"),
                 ]);
-
-                // const generatedItems: ActivityItem[] = generatedRes.data.content.map((item) => ({
-                //     id: item.id,
-                //     type: "GENERATED",
-                //     title: item.templateName || item.templateCode,
-                //     date: item.createdAt,
-                //     status: "Generado",
-                // }));
-                const generatedItems: ActivityItem[] = [];
 
                 const analyzedItems: ActivityItem[] = analyzedRes.data.content.map((item) => ({
                     id: item.id,
@@ -94,16 +78,9 @@ const DashboardPage = () => {
                     status: item.status === "COMPLETED" ? "Analizado" : item.status,
                 }));
 
-                const allItems = [...generatedItems, ...analyzedItems];
-
-                // Filter for last 48 hours
-                const now = new Date();
-                const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-
-                const recentItems = allItems
-                    .filter((item) => new Date(item.date) > fortyEightHoursAgo)
+                const recentItems = analyzedItems
                     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                    .slice(0, 3);
+                    .slice(0, 4);
 
                 setRecentActivity(recentItems);
             } catch (error) {
@@ -125,37 +102,53 @@ const DashboardPage = () => {
         });
     };
 
+    const isFree = user?.subscriptionPlan === "FREE";
+    const availableCredits = isFree && (user?.freeTrialsRemaining ?? 0) > 0
+        ? user?.freeTrialsRemaining
+        : user?.credits ?? 0;
+
+    const [isDragging, setIsDragging] = useState(false);
+
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const droppedFiles = e.dataTransfer.files;
+        if (droppedFiles && droppedFiles.length > 0) {
+            navigate("/contracts/analyze", { state: { pendingFile: droppedFiles[0] } });
+        }
+    };
+
     return (
         <DashboardLayout>
-            {/* Header */}
-            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+            {/* Top Toolbar */}
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white">
-                        Hola, {user?.name}
+                    <h1 className="text-3xl font-extrabold text-white tracking-tight">
+                        Dashboard overview
                     </h1>
-                    <p className="mt-1 text-slate-400">¿Qué quieres hacer hoy?</p>
                 </div>
 
-                <div className="flex items-center gap-4 mt-4 sm:mt-0">
-                    {/* Credits Display */}
-                    <div
-                        className="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors"
-                        onClick={() => navigate("/pricing")}
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => navigate("/contracts/analyze")}
+                        className="bg-lime-400 hover:bg-lime-300 text-slate-950 font-bold px-6 py-2.5 rounded-xl transition-all shadow-lg flex items-center gap-2 cursor-pointer shadow-[0_0_15px_rgba(163,230,53,0.3)]"
                     >
-                        {(user?.freeTrialsRemaining ?? 0) > 0 ? (
-                            <span className="text-emerald-400 font-medium text-sm">
-                                ✨ {user?.freeTrialsRemaining} Prueba{user?.freeTrialsRemaining !== 1 ? 's' : ''} Gratuita{user?.freeTrialsRemaining !== 1 ? 's' : ''} Disponible{user?.freeTrialsRemaining !== 1 ? 's' : ''}
-                            </span>
-                        ) : (
-                            <span className="text-blue-400 font-medium text-sm">
-                                💳 Créditos: {user?.credits ?? 0} <span className="text-slate-500 text-xs ml-1">(Comprar)</span>
-                            </span>
-                        )}
-                    </div>
-
+                        <Sparkles className="w-5 h-5" />
+                        Nueva Auditoría
+                    </button>
                     {/* Avatar */}
                     <div
-                        className="w-10 h-10 rounded-full bg-orange-200 flex items-center justify-center overflow-hidden cursor-pointer"
+                        className="w-11 h-11 rounded-full bg-slate-800 border-2 border-lime-300 flex items-center justify-center overflow-hidden cursor-pointer shrink-0"
                         onClick={() => navigate("/profile")}
                     >
                         {user?.profileImage ? (
@@ -165,7 +158,7 @@ const DashboardPage = () => {
                                 className="w-full h-full object-cover"
                             />
                         ) : (
-                            <span className="font-bold text-orange-700">
+                            <span className="font-bold text-lime-300">
                                 {user?.name?.charAt(0).toUpperCase()}
                             </span>
                         )}
@@ -175,12 +168,12 @@ const DashboardPage = () => {
 
             {/* Email Verification Warning */}
             {!user?.emailVerified && (
-                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 mb-8 flex items-start gap-4">
-                    <div className="p-2 bg-yellow-500/20 rounded-lg">
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 mb-8 flex items-start gap-4">
+                    <div className="p-2 bg-yellow-500/20 rounded-xl">
                         <User className="w-6 h-6 text-yellow-500" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold text-yellow-500 mb-1">
+                        <h3 className="text-lg font-bold text-yellow-500 mb-1">
                             Verifica tu correo electrónico
                         </h3>
                         <p className="text-slate-300 text-sm">
@@ -188,142 +181,168 @@ const DashboardPage = () => {
                             Revisa tu bandeja de entrada (y spam).
                             <br />
                             <span className="text-xs opacity-80 mt-1 block">
-                                ¿Ya has verificado? Prueba a <button onClick={() => { localStorage.removeItem("auth_token"); localStorage.removeItem("auth_user"); window.location.href = "/login"; }} className="underline hover:text-white cursor-pointer">cerrar sesión</button> e iniciar de nuevo.
+                                ¿Ya has verificado? Prueba a <button onClick={() => { localStorage.removeItem("auth_token"); localStorage.removeItem("auth_user"); window.location.href = "/login"; }} className="underline hover:text-white cursor-pointer font-bold">cerrar sesión</button> e iniciar de nuevo.
                             </span>
-                            <div className="mt-3">
-                                <button
-                                    onClick={handleResendEmail}
-                                    disabled={resendCooldown > 0 || isResending}
-                                    className="text-xs bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-500 border border-yellow-500/50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                                >
-                                    {resendCooldown > 0
-                                        ? `Reenviar en ${Math.floor(resendCooldown / 60)}:${(resendCooldown % 60).toString().padStart(2, '0')}`
-                                        : isResending
-                                            ? "Enviando..."
-                                            : "Reenviar correo de verificación"}
-                                </button>
-                            </div>
                         </p>
+                        <div className="mt-3">
+                            <button
+                                onClick={handleResendEmail}
+                                disabled={resendCooldown > 0 || isResending}
+                                className="text-xs bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-500 border border-yellow-500/50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer font-bold"
+                            >
+                                {resendCooldown > 0
+                                    ? `Reenviar en ${Math.floor(resendCooldown / 60)}:${(resendCooldown % 60).toString().padStart(2, '0')}`
+                                    : isResending
+                                        ? "Enviando..."
+                                        : "Reenviar correo de verificación"}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* Tarjetas principales */}
-            <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-                {/* Analizar contrato */}
+            {/* BENTO GRID */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-max">
+
+                {/* 1. ID CARD (Top Left) */}
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col justify-between shadow-2xl relative overflow-hidden h-[240px]">
+                    {/* Glowing effect inside card */}
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-lime-300/10 blur-[50px] pointer-events-none rounded-full"></div>
+
+                    <div>
+                        <h2 className="text-slate-400 text-sm font-semibold uppercase tracking-wider mb-1">
+                            Plan actual: <span className="text-white">{user?.subscriptionPlan || 'FREE'}</span>
+                        </h2>
+                        <h3 className="text-2xl font-bold text-white leading-tight break-words max-w-[80%]">
+                            {user?.name}
+                        </h3>
+                    </div>
+
+                    <div className="bg-lime-300 p-4 rounded-2xl flex flex-col mt-4">
+                        <span className="text-slate-900 font-bold text-sm">
+                            {isFree ? "EVALUACIONES DE CORTESÍA" : "CRÉDITOS DISPONIBLES"}
+                        </span>
+                        <div className="text-4xl font-extrabold text-slate-900 mt-1 flex items-baseline gap-1">
+                            {availableCredits}
+                        </div>
+                    </div>
+                </div>
+
+                {/* 2. MAIN UPLOAD ZONE (Center Span 2) */}
                 <div
                     onClick={() => navigate("/contracts/analyze")}
-                    className="group relative p-8 rounded-2xl overflow-hidden bg-linear-gradient-to-br from-indigo-400 to-purple-500 hover:shadow-2xl hover:shadow-purple-500/30 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer md:col-span-2 md:w-1/2 md:mx-auto"
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`md:col-span-2 border-2 border-dashed rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all group h-[240px] ${isDragging
+                        ? "bg-lime-300/10 border-lime-300 shadow-[0_0_30px_rgba(217,249,157,0.2)]"
+                        : "bg-slate-900/50 border-slate-700 hover:border-lime-300/50 hover:bg-slate-800/50"
+                        }`}
                 >
-                    <div className="absolute inset-0 bg-black/10" />
-                    <div className="relative z-10 text-white flex flex-col items-center text-center">
-                        <div className="w-14 h-14 mb-4 rounded-xl bg-white/20 flex items-center justify-center">
-                            <FileText className="w-8 h-8" />
-                        </div>
-                        <h2 className="text-2xl font-bold mb-1">Analizar contrato</h2>
-                        <p className="opacity-80">Sube y revisa tus documentos.</p>
+                    <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 transition-colors ${isDragging ? "bg-lime-300/30" : "bg-slate-800 group-hover:bg-lime-300/20"
+                        }`}>
+                        <UploadCloud className={`w-10 h-10 transition-colors ${isDragging ? "text-lime-300" : "text-slate-400 group-hover:text-lime-300"
+                            }`} />
                     </div>
+                    <h2 className={`text-2xl font-bold mb-2 transition-colors ${isDragging ? "text-lime-300" : "text-white"
+                        }`}>
+                        {isDragging ? "¡Suelta el archivo aquí!" : "Sube un contrato para auditar"}
+                    </h2>
+                    <p className="text-slate-400 max-w-sm">
+                        Haz clic aquí para ir al analizador. Sube tu PDF o DOCX y obtén tu informe de salud legal en segundos.
+                    </p>
                 </div>
 
-                {/* Generar contrato (DESHABILITADO TEMPORALMENTE) */}
-                {/* <div
-                    onClick={() => navigate("/contracts/generate")}
-                    className="group relative p-8 rounded-2xl overflow-hidden bg-linear-gradient-to-br from-emerald-400 to-cyan-500 hover:shadow-2xl hover:shadow-cyan-500/30 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
-                >
-                    <div className="absolute inset-0 bg-black/10" />
-                    <div className="relative z-10 text-white">
-                        <div className="w-14 h-14 mb-4 rounded-xl bg-white/20 flex items-center justify-center">
-                            <Plus className="w-8 h-8" />
-                        </div>
-                        <h2 className="text-2xl font-bold mb-1">Generar contrato</h2>
-                        <p className="opacity-80">Crea un nuevo documento legal.</p>
+                {/* 3. RECENT ACTIVITY (Bottom Left, Span 2) */}
+                <div className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-xl font-bold text-white">Últimos Análisis</h2>
+                        <button
+                            onClick={() => navigate("/history")}
+                            className="text-slate-400 hover:text-white text-sm font-semibold transition-colors flex items-center gap-1"
+                        >
+                            Ver todos <ArrowRight className="w-4 h-4" />
+                        </button>
                     </div>
-                </div> */}
-            </section>
 
-            {/* Actividad reciente */}
-            <section>
-                <h2 className="text-2xl font-bold mb-6 text-white">
-                    Actividad reciente
-                </h2>
-
-                {isLoading ? (
-                    <div className="text-center text-slate-400 py-10">Cargando actividad...</div>
-                ) : recentActivity.length > 0 ? (
-                    <div className="space-y-4">
-                        {recentActivity.map((item) => (
-                            <div
-                                key={`${item.type}-${item.id}`}
-                                className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${item.type === "GENERATED" ? "bg-blue-900/50 text-blue-400" : "bg-green-900/50 text-green-400"
-                                        }`}>
-                                        {item.type === "GENERATED" ? <FileText className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+                    {isLoading ? (
+                        <div className="flex-1 flex items-center justify-center text-slate-500 py-8">Cargando...</div>
+                    ) : recentActivity.length > 0 ? (
+                        <div className="space-y-3">
+                            {recentActivity.map((item) => (
+                                <div key={item.id} className="flex items-center justify-between p-4 bg-slate-950/50 rounded-2xl hover:bg-slate-800/80 transition-colors group">
+                                    <div className="flex items-center gap-4 min-w-0">
+                                        <div className="w-10 h-10 shrink-0 bg-slate-800 rounded-xl flex items-center justify-center">
+                                            <FileText className="w-5 h-5 text-lime-300" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="font-semibold text-white truncate text-sm sm:text-base">
+                                                {item.title}
+                                            </p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-xs text-slate-400">{formatDate(item.date)}</span>
+                                                <span className="w-1 h-1 rounded-full bg-slate-600"></span>
+                                                <span className={`text-xs font-semibold ${item.status === 'Analizado' ? 'text-emerald-400' : 'text-slate-400'}`}>
+                                                    {item.status}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h3 className="font-semibold text-slate-50 text-sm sm:text-base break-all">
-                                            {item.title}
-                                        </h3>
-                                        <p className="text-xs text-slate-400 mt-1">
-                                            {item.status} • {formatDate(item.date)}
-                                        </p>
-                                    </div>
+                                    <button
+                                        onClick={() => navigate("/history")}
+                                        className="shrink-0 p-2 text-slate-400 hover:text-lime-300 opacity-0 group-hover:opacity-100 transition-all rounded-lg hover:bg-lime-300/10 cursor-pointer"
+                                    >
+                                        <ArrowRight className="w-5 h-5" />
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={() => navigate("/history")}
-                                    className="text-sm text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap cursor-pointer"
-                                >
-                                    Ver en historial →
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    /* Empty state */
-                    <div className="bg-slate-900/80 rounded-2xl p-6 flex flex-col items-center justify-center text-center">
-                        <div className="w-20 h-20 mb-6 rounded-full bg-slate-800 flex items-center justify-center">
-                            <Package className="w-10 h-10 text-slate-500" />
+                            ))}
                         </div>
-                        <h3 className="text-xl font-semibold text-white mb-2">
-                            No hay actividad reciente
-                        </h3>
-                        <p className="text-slate-400 max-w-md">
-                            Comienza por analizar o generar tu primer contrato para ver tu
-                            historial aquí.
-                        </p>
-                    </div>
-                )}
-
-                {/* Links rápidos */}
-                <div className="mt-6 space-y-4">
-                    <div
-                        onClick={() => navigate("/history")}
-                        className="flex items-center justify-between p-4 bg-slate-900/80 rounded-2xl hover:bg-slate-800 transition-colors cursor-pointer"
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center">
-                                <Clock className="w-5 h-5 text-slate-300" />
-                            </div>
-                            <p className="font-semibold text-white">Mi historial</p>
+                    ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
+                            <Clock className="w-12 h-12 text-slate-700 mb-4" />
+                            <p className="text-slate-400 font-medium">No hay actividad reciente</p>
                         </div>
-                        <span className="text-slate-500">›</span>
-                    </div>
-
-                    <div
-                        onClick={() => navigate("/profile")}
-                        className="flex items-center justify-between p-4 bg-slate-900/80 rounded-2xl hover:bg-slate-800 transition-colors cursor-pointer"
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center">
-                                <User className="w-5 h-5 text-slate-300" />
-                            </div>
-                            <p className="font-semibold text-white">Mi perfil</p>
-                        </div>
-                        <span className="text-slate-500">›</span>
-                    </div>
+                    )}
                 </div>
-            </section>
+
+                {/* 4. UPGRADE CENTER CARD (Bottom Right) */}
+                <div className="bg-linear-to-br from-indigo-500/20 to-purple-600/20 border border-indigo-500/30 rounded-3xl p-6 shadow-xl flex flex-col justify-between relative overflow-hidden group hover:border-indigo-400 transition-colors">
+                    {/* Abstract tech shapes */}
+                    <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-indigo-500/20 rounded-full blur-xl group-hover:bg-indigo-500/30 transition-all"></div>
+                    <div className="absolute top-4 right-4 text-indigo-400/50"><Sparkles className="w-12 h-12" /></div>
+
+                    <div className="relative z-10 mb-8 mt-2">
+                        {isFree ? (
+                            <>
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-500/20 text-indigo-300 text-xs font-bold rounded-full mb-4 border border-indigo-500/30">
+                                    <CheckCircle2 className="w-3.5 h-3.5" /> RECOMENDADO
+                                </div>
+                                <h3 className="text-2xl font-bold text-white leading-tight mb-2">Desbloquea todo el potencial</h3>
+                                <p className="text-slate-300 text-sm">Pásate a Pro y audita sin límites.</p>
+                            </>
+                        ) : (
+                            <>
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-lime-300/20 text-lime-300 text-xs font-bold rounded-full mb-4 border border-lime-300/30">
+                                    <Sparkles className="w-3.5 h-3.5" /> TOP-UP
+                                </div>
+                                <h3 className="text-2xl font-bold text-white leading-tight mb-2">¿Necesitas un extra?</h3>
+                                <p className="text-slate-300 text-sm">Añade 10 créditos instántaneos a tu saldo.</p>
+                            </>
+                        )}
+                    </div>
+
+                    <button
+                        onClick={() => navigate("/pricing")}
+                        className={`relative z-10 w-full font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 ${isFree
+                            ? "bg-indigo-500 hover:bg-indigo-400 text-white shadow-indigo-500/25"
+                            : "bg-lime-300 hover:bg-lime-400 text-slate-900 shadow-lime-300/20"
+                            }`}
+                    >
+                        {isFree ? "Actualizar Plan" : "Recargar Créditos"}
+                    </button>
+                </div>
+
+            </div>
         </DashboardLayout>
     );
 };

@@ -6,4 +6,6 @@ import lombok.Data;
 public class UpdateProfileRequest {
     private String name;
     private String profileImage;
+    private String agencyName;
+    private String jobPosition;
 }

@@ -39,9 +39,25 @@ public class ContractAnalysis {
     @Column(columnDefinition = "TEXT")
     private String rawText;
 
+    private String contractType;
+
     @Lob
     @Column(columnDefinition = "TEXT")
     private String summary;
+
+    private Integer healthScore;
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String verdict;
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String findingsSummaryJson;
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String detailedAnalysisJson;
 
     @Lob
     @Column(columnDefinition = "TEXT")

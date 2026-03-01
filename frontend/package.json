@@ -14,6 +14,8 @@
     "@react-pdf/renderer": "^4.3.2",
     "@tailwindcss/vite": "^4.1.17",
     "axios": "^1.13.2",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.34.3",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^0.556.0",
     "react": "^19.2.0",
@@ -21,6 +23,7 @@
     "react-hook-form": "^7.71.0",
     "react-pdf": "^10.3.0",
     "react-router-dom": "^7.10.0",
+    "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.1.17",
     "zod": "^4.3.5"
   },

@@ -9,7 +9,7 @@ type DashboardLayoutProps = {
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     return (
-        <div className="min-h-screen bg-[#0f172a] text-slate-100 flex flex-col lg:flex-row">
+        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col lg:flex-row font-['Plus_Jakarta_Sans',sans-serif]">
             <Sidebar />
             <MobileNavbar />
             <main className="flex-1 overflow-y-auto h-[calc(100vh-65px)] lg:h-screen">

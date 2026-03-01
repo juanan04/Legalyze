@@ -1,15 +1,9 @@
-export interface Clause {
-    title: string;
-    description: string;
-    clauseText: string;
+export interface DetailedAnalysis {
+    location: string;
+    originalClause: string;
+    riskDetected: string;
+    proposedWording: string;
     riskLevel: string;
-}
-
-export interface Risk {
-    title: string;
-    description: string;
-    severity: string;
-    quote?: string; // Added for highlighting support
 }
 
 export interface AnalysisResult {
@@ -17,7 +11,10 @@ export interface AnalysisResult {
     originalFileName: string;
     uploadedAt: string;
     status: string;
+    contractType?: string;
     summary: string;
-    keyClauses: Clause[];
-    risks: Risk[];
+    healthScore: number;
+    verdict: string;
+    findingsSummary: string[];
+    detailedAnalysis: DetailedAnalysis[];
 }

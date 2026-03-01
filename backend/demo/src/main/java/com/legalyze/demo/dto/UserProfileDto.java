@@ -9,6 +9,8 @@ public class UserProfileDto {
     private Long id;
     private String name;
     private String email;
+    private String agencyName;
+    private String jobPosition;
     private String profileImage;
     private LocalDateTime createdAt;
     private Integer credits;
@@ -16,4 +18,6 @@ public class UserProfileDto {
     private Boolean freeAnalysisUsed; // Deprecated, kept for compatibility if needed
     private Boolean emailVerified;
     private Boolean betaNoticeAck;
+    private String subscriptionPlan;
+    private String subscriptionStatus;
 }
