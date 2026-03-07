@@ -1,1 +1,38 @@
+# Logs
+*.log
+logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Environment variables
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Dependency directories
+node_modules/
+jspm_packages/
+venv/
+env/
+.venv/
+
+# Editor directories and files
+.idea
 .vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Build and Java
+target/
+build/
+*.class
+
+# OS metadata
+.DS_Store
+Thumbs.db
