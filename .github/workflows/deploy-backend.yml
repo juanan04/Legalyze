@@ -1,0 +1,25 @@
+name: Deploy Backend Legalyze 🚀
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code 📥
+        uses: actions/checkout@v4
+
+      - name: Sync code to infra folder 🔄
+        run: |
+          mkdir -p ~/legalyze-infra/Legalyze
+          cp -r backend ~/legalyze-infra/Legalyze/
+
+      - name: Docker Compose Deploy 🐳
+        run: |
+          cd ~/legalyze-infra
+          docker-compose up -d --build backend
