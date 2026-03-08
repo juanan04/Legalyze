@@ -1,31 +1,25 @@
-name: Deploy Backend to Ubuntu Server
+name: Deploy Backend Legalyze 🚀
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
-      - "backend/demo/**" # Solo ejecutar si hay cambios en el backend
+      - "backend/**"
 
 jobs:
-  deploy:
-    # Usamos el runner local que instalarás en tu servidor (/home/user24)
+  build-and-deploy:
     runs-on: self-hosted
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout code 📥
         uses: actions/checkout@v4
 
-      - name: Set up Java 21
-        uses: actions/setup-java@v3
-        with:
-          java-version: "21"
-          distribution: "temurin"
+      - name: Sync code to infra folder 🔄
+        run: |
+          mkdir -p ~/legalyze-infra/Legalyze
+          cp -r backend ~/legalyze-infra/Legalyze/
 
-      - name: Build with Maven
-        working-directory: ./backend/demo
-        run: ./mvnw clean package -DskipTests
-
-      - name: Restart Systemd Service
-        # Reinicia el servicio usando sudo (deberemos darle permisos sin contraseña a user24 para este comando)
-        run: sudo systemctl restart legalyze-backend
+      - name: Docker Compose Deploy 🐳
+        run: |
+          cd ~/legalyze-infra
+          docker-compose up -d --build backend
