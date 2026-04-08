@@ -17,9 +17,10 @@ jobs:
       - name: Sync code to infra folder 🔄
         run: |
           mkdir -p ~/legalyze-infra/Legalyze
-          cp -r backend ~/legalyze-infra/Legalyze/
+          rsync -av --delete backend/ ~/legalyze-infra/Legalyze/backend/
 
       - name: Docker Compose Deploy 🐳
         run: |
           cd ~/legalyze-infra
+          docker compose down --remove-orphans
           docker compose up -d --build backend
